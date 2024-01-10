@@ -38,13 +38,34 @@ expected times, but in different fashions.  So higher (>1) course difficulties
 represent *harder* courses.  While lower (<1) runner abilities represent *faster*
 runners. In both cases, higher numbers represent longer finish times.
 
-Note, the outputs from this model are unnormalizedm and should be considered
+Note, the outputs from this model are unnormalized and should be considered
 relative results. 
 While both the ability and difficulty numbers tend to be close to 1, 
-the baselines are arbitrary.
+their baselines are arbitrary.
 Thus an average course_difficulty of 0.5 and an average runner ability of 2 will
 produce the same overall race-time predictions as the reverse.
 
 ## Bayesian Modeling
-Given all the data, we use a Bayesian framework to fit the model parameteres 
-to the data.
+Given all the data, we use a Bayesian framework to fit a model that explains
+the data.
+In a Bayesian model all the parameters of the model are considered random
+variables. We don't know Sara's true ability, so it is a random variable. 
+Likewise, the difficulty of Toro changes with the weather and other variables
+we do not have control over. Our goal is to find probability distributions that
+are as narrow as possible that explain the observed data.
+
+By way of contrast, a deterministic model such as linear regression finds the
+model parameters that produce the smallest possible error
+(in the mean-squared sense)
+when predicting the observed times.
+Instead, here we use a Bayesian model so we can model and 
+describe the uncertainties in our predictions.
+
+An important part of Bayesian modeling is providing information about 
+expectations of the parameters. In this case, we wish the course and runner
+parameters to be approximately 1.0. This kind of constraint is added to the 
+Bayesian model in the form of prior distributions.
+
+Given our race results, we find the probability distribution for the parameters
+that best explains the data using a
+Python package called [PyMC](https://www.pymc.io/welcome.html).
