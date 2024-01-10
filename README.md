@@ -36,21 +36,21 @@ The runner_ability and course_difficulty parameters are multiplicative factors
 that modify the expected race time during the season. Both factors adjust the
 expected times, but in different fashions.  So higher (>1) course difficulties
 represent *harder* courses.  While lower (<1) runner abilities represent *faster*
-runners. In both cases, higher numbers represent longer finish times.
+runners. In both cases, higher numbers translate to longer finish times.
 
 Note, the outputs from this model are unnormalized and should be considered
-relative results. 
+*relative* results. 
 While both the ability and difficulty numbers tend to be close to 1, 
 their baselines are arbitrary.
 Thus an average course_difficulty of 0.5 and an average runner ability of 2 will
 produce the same overall race-time predictions as the reverse.
 
 ## Bayesian Modeling
-Given all the data, we use a Bayesian framework to fit a model that explains
-the data.
+We use a Bayesian framework to fit a model that explains
+the observed data (runner's race times).
 In a Bayesian model all the parameters of the model are considered random
-variables. We don't know Sara's true ability, so it is a random variable. 
-Likewise, the difficulty of Toro changes with the weather and other variables
+variables. We don't know Kent's true ability, so it is a random variable. 
+Likewise, the difficulty of Crystal changes with the weather and other variables
 we do not have control over. Our goal is to find probability distributions that
 are as narrow as possible that explain the observed data.
 
