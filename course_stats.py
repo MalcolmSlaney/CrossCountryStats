@@ -222,3 +222,39 @@ def build_and_test_model(xc_data: pd.DataFrame) -> Tuple[
   print(f'Find the MCMC distribution for {xc_data.shape[0]} results....')
   model_trace = pm.sample(model=xc_model)
   return xc_model, map_estimate, model_trace
+
+
+def save_model(filename, model, trace, map_estimate, 
+               top_runner_percent, panda_data, 
+               course_mapper, runner_mapper,
+               default_dir='/content/gdrive/MyDrive/CrossCountry/XCStats/'):
+  if filename.startswith('/'):
+    full_filename = filename
+  else:
+    full_filename = os.path.join(default_dir, filename)
+
+  dict_to_save = {'model': model,
+                  'trace': trace,
+                  'top_runner_percent': top_runner_percent,
+                  'panda_data': panda_data,
+                  'course_mapper': course_mapper,
+                  'runner_mapper': runner_mapper,
+                  'map_estimate': map_estimate,
+                  }
+
+  with open(full_filename , 'wb') as buff:
+      cloudpickle.dump(dict_to_save, buff) 
+
+
+def load_model(filename, 
+               default_dir='/content/gdrive/MyDrive/CrossCountry/XCStats/'):
+  if filename.startswith('/'):
+    full_filename = filename
+  else:
+    full_filename = os.path.join(default_dir, filename)
+  with open(full_filename , 'rb') as buff:
+      model_dict = cloudpickle.load(buff)
+  return (model_dict['model'], model_dict['trace'], 
+          model_dict['top_runner_percent'], model_dict['panda_data'],
+          model_dict['course_mapper'], model_dict['runner_mapper'],
+          model_dict['map_estimate'])
