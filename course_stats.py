@@ -217,7 +217,7 @@ def build_and_test_model(xc_data: pd.DataFrame) -> Tuple[
   """Find the MAP and parameter distributions for the given data."""
   xc_model = create_xc_model(xc_data)
   print(f'Find the MAP estimate for {xc_data.shape[0]} results....')
-  map_estimate = pm.find_MAP(model=model)
+  map_estimate = pm.find_MAP(model=xc_model)
 
   print(f'Find the MCMC distribution for {xc_data.shape[0]} results....')
   model_trace = pm.sample(model=xc_model)
