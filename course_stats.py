@@ -1,3 +1,7 @@
+import datetime
+import os
+
+import cloudpickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -112,3 +116,109 @@ def create_xc_model(data: pd.DataFrame,
     y_like = pm.Normal('y_like', mu=time_est, sigma=eps,
                        observed=data.times.values)
   return a_model
+
+
+#######  XCStats Import and Transforms ######
+
+def parse_date(date_string: str) -> datetime.datetime:
+  """Parse the XCStats date format."""
+  return datetime.datetime.strptime(date_string, '%m/%d/%Y')
+
+parse_date('10/5/2019')
+
+def extract_month(date, starting_month=0):
+  """Get the race month as a number.  Starting_month allows us to start counting
+  from September (9).  Return an integer (generally between 0 and 3)
+  """
+  return parse_date(date).month - starting_month
+
+def extract_year(date):
+  """Return the year of the race as an integer."""
+  return parse_date(date).year
+
+def import_xcstats(
+    csv_file: str, 
+    default_dir: str ='/content/gdrive/MyDrive/CrossCountry/XCStats') -> pd.DataFrame:
+  """Import the XCStats data into Panda.  Transform the race date into the 
+  month and year we need for our model.  The month is number of months since
+  September, since that's the start of the season (generally 0-3).  The year is
+  the runner's year in high school (0-3).  Divide the times and distances by
+  100 to turn into seconds and miles.
+
+  Return a new Panda DataFrame.
+  """
+  if csv_file.startswith('/'):
+    filename = csv_file
+  else:
+    filename = os.path.join(default_dir, csv_file)
+  data = pd.read_csv(filename)
+
+  # Adjust the dates and put them in the right format
+  months = data.meetDate.apply(extract_month, starting_month=9)
+  years = data.meetDate.apply(extract_year)
+
+  data['times'] = data.result / 100.0
+  data['distance'] = data.distance / 100.0
+
+  race_data = pd.DataFrame({'race_month': months,
+                          'race_year': years})
+  data_with_dates = pd.concat((data, race_data), axis=1)
+  return data_with_dates
+
+
+def transform_ids(data: pd.DataFrame,
+                  column_name: str) -> Tuple[pd.Series, Dict[Any, int]]:
+  """Go through all the indicated column data and generate a mapping from
+  the original name/id to a small number.  Return the time series, and
+  the dictionary that maps the original name/id into the new ID.
+  """
+  original_ids = list(set(data[column_name]))
+  mapping_dictionary = dict(zip(original_ids, range(len(original_ids))))
+  # print(mapping_dictionary)
+  return data[column_name].map(mapping_dictionary), mapping_dictionary
+
+def prepare_xc_data(data: pd.DataFrame,
+                    school_id: Optional[int] = None,
+                    place_fraction: Optional[float] = None,
+                    remove_bad_grads: bool = True
+                    ) -> Tuple[pd.DataFrame,
+                               Dict[Any, int],
+                               Dict[Any, int]]:
+  """Put the XCStats' data into the right Panda form for analysis my the
+  Bayesian model code.  In particular, this creates the umique runner_ids
+  and course_ids fields, by renumbering them so they are consequitive. Return
+  a new dataframe with all the original fields, and the ones we add here.
+
+  The school_id argument limits the output to just that school.
+  The place_fraction limits the runners to those that finish in this *fraction*
+  of the top.
+  """
+  if school_id:
+    data = data[data['schoolID'] == school_id].copy()
+
+  if place_fraction:
+    data = data[data['place']/data['num_runners'] < place_fraction].copy()
+
+  if remove_bad_grads:
+    # Some runners are missing a graduation year (set to zero) so remove them.
+    data = data[data['gradYear'] > 1900].copy()
+
+  new_runner_ids, runner_mapper = transform_ids(data, 'runnerID')
+  data.loc[:, 'runner_ids'] = new_runner_ids
+  new_course_ids, course_mapper = transform_ids(data, 'courseName')
+  data.loc[:, 'course_ids'] = new_course_ids
+
+  data.loc[:, 'runner_year'] = data['gradYear'] - data['race_year']
+  return data, runner_mapper, course_mapper
+
+  
+def build_and_test_model(xc_data: pd.DataFrame) -> Tuple[
+    pm.Model, dict[str, np.ndarray], az.InferenceData]:
+  """Find the MAP and parameter distributions for the given data."""
+  xc_model = create_xc_model(xc_data)
+  print(f'Find the MAP estimate for {xc_data.shape[0]} results....')
+  map_estimate = pm.find_MAP(model=model)
+
+  print(f'Find the MCMC distribution for {xc_data.shape[0]} results....')
+  model_trace = pm.sample(model=xc_model)
+  return xc_model, map_estimate, model_trace
