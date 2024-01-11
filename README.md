@@ -73,7 +73,7 @@ Python package called [PyMC](https://www.pymc.io/welcome.html).
 
 ## Results
 MAP estimate is 11.02s, not sure why it doesn't match the MCMC sample trace histogram.
-![Varsity Boys Monthly Slope (s/month)](results/vb_monthly_slope.png)
+![Varsity Boys Monthly Slope (s/month)](Results/vb_monthly_slope.png)
 
 MAP estimate is -16.1s, not sure why it doesn't match the MCMC sample trace histogram.
 ![Varsity Boys Yearly Slope (s/month)](Results/vb_yearly_slope.png)
