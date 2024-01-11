@@ -76,12 +76,12 @@ MAP estimate is 11.02s, not sure why it doesn't match the MCMC sample trace hist
 ![Varsity Boys Monthly Slope (s/month)](results/vb_monthly_slope.png)
 
 MAP estimate is -16.1s, not sure why it doesn't match the MCMC sample trace histogram.
-![Varsity Boys Yearly Slope (s/month)](results/vb_yearly_slope.png)
+![Varsity Boys Yearly Slope (s/month)](Results/vb_yearly_slope.png)
 
-![Varsity Boys Abilities (AU)](results/vb_runner_abilities.png)
+![Varsity Boys Abilities (AU)](Results/vb_runner_abilities.png)
 
-![Varsity Boys Course Difficulties (A. U.)](results/vb_course_difficulty_comparison.png)
+![Varsity Boys Course Difficulties (A. U.)](Results/vb_course_difficulty_comparison.png)
 
-![Varsity Girls Course Difficulties (A. U.)](results/vg_course_difficulty_comparison.png)
+![Varsity Girls Course Difficulties (A. U.)](Results/vg_course_difficulty_comparison.png)
 
-![Varsity Boys Stanford Course Difficultes (A. U.)](results/vb_stanford_course_difficulty_histogram.png)
+![Varsity Boys Stanford Course Difficultes (A. U.)](Results/vb_stanford_course_difficulty_histogram.png)
