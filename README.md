@@ -85,3 +85,9 @@ MAP estimate is -16.1s, not sure why it doesn't match the MCMC sample trace hist
 ![Varsity Girls Course Difficulties (A. U.)](Results/vg_course_difficulty_comparison.png)
 
 ![Varsity Boys Stanford Course Difficultes (A. U.)](Results/vb_stanford_course_difficulty_histogram.png)
+
+
+Interactive course difficulty renderer.  
+[Use the buttons on the side to zoom and pan around the image.]
+
+[Course Difficulty Comparison Viewer - probably have to download to render](Results/varsity_difficulties_comparison.html)
