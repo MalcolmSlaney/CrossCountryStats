@@ -66,6 +66,20 @@ expectations of the parameters. In this case, we wish the course and runner
 parameters to be approximately 1.0. This kind of constraint is added to the 
 Bayesian model in the form of prior distributions.
 
+We have 4 years of high school race results from the subscribers to
+[XCStats.com](xcstats.com).
+This represents 70k boys results and 63k girls results.
+For the analysis presented here, we use the runners with times in the top 25\%
+of each race, hypothesizing that these are likely to be the more serious runners
+and will show less variance in their performance.
+This left us with 22k boys
+results and 19k girls results.
+Our boy's model was traimed with 3919 runners 
+running 443 courses.
+While the girl's model was trained with 3229 runners running
+432 courses.
+
+
 Given our race results, we find the probability distribution for the parameters
 that best explains the data using a
 Python package called [PyMC](https://www.pymc.io/welcome.html).
