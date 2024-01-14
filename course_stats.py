@@ -10,6 +10,11 @@ from typing import Any, Dict, Optional, Tuple, List
 import pymc as pm
 import arviz as az
 
+# Our main plotting package (must have explicit import of submodules)
+import bokeh.io
+import bokeh.plotting
+
+
 ## Data and Model Code
 
 ###Synthesize Data
@@ -124,8 +129,6 @@ def parse_date(date_string: str) -> datetime.datetime:
   """Parse the XCStats date format."""
   return datetime.datetime.strptime(date_string, '%m/%d/%Y')
 
-parse_date('10/5/2019')
-
 def extract_month(date, starting_month=0):
   """Get the race month as a number.  Starting_month allows us to start counting
   from September (9).  Return an integer (generally between 0 and 3)
@@ -136,10 +139,13 @@ def extract_year(date):
   """Return the year of the race as an integer."""
   return parse_date(date).year
 
+
+default_data_dir = '/content/gdrive/MyDrive/CrossCountry/XCStats'
+
 def import_xcstats(
-    csv_file: str, 
-    default_dir: str ='/content/gdrive/MyDrive/CrossCountry/XCStats') -> pd.DataFrame:
-  """Import the XCStats data into Panda.  Transform the race date into the 
+    csv_file: str,
+    default_dir: str = default_data_dir) -> pd.DataFrame:
+  """Import the XCStats data into Panda.  Transform the race date into the
   month and year we need for our model.  The month is number of months since
   September, since that's the start of the season (generally 0-3).  The year is
   the runner's year in high school (0-3).  Divide the times and distances by
@@ -160,8 +166,15 @@ def import_xcstats(
   data['times'] = data.result / 100.0
   data['distance'] = data.distance / 100.0
 
+  # Add mileage to each course name since sometimes the same course has multiple
+  # distances.
+  # https://saturncloud.io/blog/how-to-combine-two-columns-in-a-pandas-dataframe/
+  def race_name(row):
+    return f'{row["courseName"]} ({row["distance"]})'
+  data['course_distance'] = data.apply(race_name, axis=1)
+
   race_data = pd.DataFrame({'race_month': months,
-                          'race_year': years})
+                            'race_year': years})
   data_with_dates = pd.concat((data, race_data), axis=1)
   return data_with_dates
 
@@ -205,10 +218,11 @@ def prepare_xc_data(data: pd.DataFrame,
 
   new_runner_ids, runner_mapper = transform_ids(data, 'runnerID')
   data.loc[:, 'runner_ids'] = new_runner_ids
-  new_course_ids, course_mapper = transform_ids(data, 'courseName')
+  new_course_ids, course_mapper = transform_ids(data, 'course_distance')
   data.loc[:, 'course_ids'] = new_course_ids
 
-  data.loc[:, 'runner_year'] = data['gradYear'] - data['race_year']
+  # Years since a freshman (which will be 0)
+  data.loc[:, 'runner_year'] = data['race_year'] - (data['gradYear'] - 4)
   return data, runner_mapper, course_mapper
 
   
@@ -224,10 +238,14 @@ def build_and_test_model(xc_data: pd.DataFrame) -> Tuple[
   return xc_model, map_estimate, model_trace
 
 
-def save_model(filename, model, trace, map_estimate, 
-               top_runner_percent, panda_data, 
+def find_course_name(name, mapper=vb_inverse_course_mapper):
+  return [k for k in vb_course_mapper.keys() if name in k]
+
+
+def save_model(filename, model, trace, map_estimate,
+               top_runner_percent, panda_data,
                course_mapper, runner_mapper,
-               default_dir='/content/gdrive/MyDrive/CrossCountry/XCStats/'):
+               default_dir=default_data_dir):
   if filename.startswith('/'):
     full_filename = filename
   else:
@@ -243,10 +261,10 @@ def save_model(filename, model, trace, map_estimate,
                   }
 
   with open(full_filename , 'wb') as buff:
-      cloudpickle.dump(dict_to_save, buff) 
+      cloudpickle.dump(dict_to_save, buff)
 
 
-def load_model(filename, 
+def load_model(filename,
                default_dir='/content/gdrive/MyDrive/CrossCountry/XCStats/'):
   if filename.startswith('/'):
     full_filename = filename
@@ -254,7 +272,7 @@ def load_model(filename,
     full_filename = os.path.join(default_dir, filename)
   with open(full_filename , 'rb') as buff:
       model_dict = cloudpickle.load(buff)
-  return (model_dict['model'], model_dict['trace'], 
+  return (model_dict['model'], model_dict['trace'],
           model_dict['top_runner_percent'], model_dict['panda_data'],
           model_dict['course_mapper'], model_dict['runner_mapper'],
           model_dict['map_estimate'])
