@@ -238,8 +238,8 @@ def build_and_test_model(xc_data: pd.DataFrame) -> Tuple[
   return xc_model, map_estimate, model_trace
 
 
-def find_course_name(name, mapper=vb_inverse_course_mapper):
-  return [k for k in vb_course_mapper.keys() if name in k]
+def find_course_name(name, mapper):
+  return [k for k in mapper.keys() if name in k]
 
 
 def save_model(filename, model, trace, map_estimate,
