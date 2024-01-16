@@ -9,7 +9,7 @@ import course_stats
 class XCStatsTest(absltest.TestCase):
   """Test cases for QuickSIN Google Cloud ASR tests."""
 
-  def XXtest_month_year_model(self):
+  def test_month_year_model(self):
     # Generate data with course and months only.
     df, _, _ = course_stats.generate_xc_data(noise=1, use_course=False, 
                                              standard_time=1080,
@@ -47,7 +47,7 @@ class XCStatsTest(absltest.TestCase):
     self.assertAlmostEqual(map_estimate['eps'], 0, delta=.2)
 
 
-  def XXtest_month_course_model(self):
+  def test_month_course_model(self):
     (df,
     course_difficulties,
     runner_abilities) = course_stats.generate_xc_data(noise=1, use_course=True, 
@@ -87,9 +87,5 @@ class XCStatsTest(absltest.TestCase):
     plt.ylabel('MAP Estimate')
     plt.savefig('Results/simulated_data_everything_runner_abilities.png')
 
-    plt.clf()
-    pm.model_to_graphviz(xc_model)
-    plt.savefig('Results/simulated_data_everything_model_viz.png')
- 
 if __name__ == '__main__':
   absltest.main()
