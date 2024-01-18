@@ -2,6 +2,9 @@ import datetime
 import os
 import sys
 
+from absl import app
+from absl import flags
+
 import cloudpickle
 import numpy as np
 import pandas as pd
@@ -17,7 +20,7 @@ import bokeh.plotting
 
 ## Data and Model Code
 
-default_data_dir = '/content/gdrive/MyDrive/CrossCountry/XCStats'
+default_data_dir = 'Data'
 
 # https://discourse.pymc.io/t/how-save-pymc-v5-models/13022
 
@@ -273,6 +276,61 @@ def find_course_name(name, mapper):
   return [k for k in mapper.keys() if name in k]
 
 
+# Gather the data so we can plot a scatter plot showing boy's and girl's
+# course difficuties.
+def create_result_frame(vb_data, vg_data,
+                        vb_course_mapper, vg_course_mapper, 
+                        vb_model_trace, vg_model_trace, local_courses=[],
+                        vb_map_estimate=None, vg_map_estimate=None,
+                        use_map = False, normalize_to_crystal=True):
+  if use_map:
+    vb_course_est = vb_map_estimate['course_est']
+    vg_course_est = vg_map_estimate['course_est']
+  else:
+    # Average the posterior for course_est over all traces and all samples.
+    vb_course_est = np.mean(vb_model_trace.posterior.course_est.values, axis=(0,1))
+    vg_course_est = np.mean(vg_model_trace.posterior.course_est.values, axis=(0,1))
+
+  common_courses = find_common_courses(vb_course_mapper, vg_course_mapper)
+
+  vg_difficulties = []
+  vb_difficulties = []
+  course_distances = []
+  boys_runner_count = []
+  girls_runner_count = []
+  local_course = []
+  for course_name in common_courses:
+    base_course_name, distance = get_course_distance(course_name)
+    course_distances.append(distance)
+
+    vb_difficulties.append(vb_course_est[vb_course_mapper[course_name]])
+    vg_difficulties.append(vg_course_est[vg_course_mapper[course_name]])
+    if course_name == 'Crystal Springs (2.95)':
+      vb_norm = vb_difficulties[-1]
+      vg_norm = vg_difficulties[-1]
+
+    runnerIDs = vb_data.loc[vb_data['course_distance'] == course_name]['runnerID'].values
+    boys_runner_count.append(len(runnerIDs))
+    runnerIDs = vg_data.loc[vg_data['course_distance'] == course_name]['runnerID'].values
+    girls_runner_count.append(len(runnerIDs))
+
+    local_course.append(base_course_name in local_courses)
+
+  if normalize_to_crystal:
+    vb_difficulties = np.asarray(vb_difficulties)/vb_norm
+    vg_difficulties = np.asarray(vg_difficulties)/vg_norm
+
+  scatter_df = pd.DataFrame({'vg_difficulty': vg_difficulties,
+                            'vb_difficulty': vb_difficulties,
+                            'course_name': common_courses,
+                            'course_distances': course_distances,
+                            'boys_runner_count': boys_runner_count,
+                            'girls_runner_count': girls_runner_count,
+                            'local_course': local_course,
+                            })
+  return scatter_df
+
+
 def save_model(filename, model, trace, map_estimate,
                top_runner_percent, panda_data,
                course_mapper, runner_mapper,
@@ -388,7 +446,7 @@ def create_html_table(df, filename):
     print(html_footer, file=f)
 
 
-def plot_difficulty_comparison(scatter_df:
+def plot_difficulty_comparison(scatter_df):
   # Drop the data point for Spooner since it's a very long distance.
   p = bokeh.plotting.figure(title="Varsity Boy/Girl Course Difficulty Comparison",
                             x_axis_label='Girls MAP Estimate',
@@ -418,7 +476,68 @@ def plot_difficulty_comparison(scatter_df:
   p.legend.location = 'top_left'
   return p
 
-main(argv)
+# Figure out which courses are common to both boys and girls (for the scatter
+# that follow.)
+def find_common_courses(vb_course_mapper, vg_course_mapper):
+  """Find the courses that are common to both boys and girls.
+  """
+  vg_courses = set(vg_course_mapper.keys())
+  return list(set(vb_course_mapper.keys()).intersection(vg_courses))
+
+
+# Extract the course names where our local schools run, for easier debugging.
+local_schools = [830, # Palo Alto
+                 950, # Los Altos
+                 1, # Archbishop Mitty
+                 10, # Lynbrook
+]
+
+def find_local_courses(pd_data, local_schools=local_schools):
+  local_courses = pd_data.loc[pd_data['schoolID'].isin(local_schools)]
+  return local_courses.courseName.unique()
+
+def get_course_distance(n: str) -> str:
+  pieces = n.rsplit(' ', 1)
+  return pieces[0], float(pieces[1][1:-1])
+
+FLAGS = flags.FLAGS
+flags.DEFINE_integer('chains', 2, 'Number of MCMC chains to explore',
+                     lower_bound=1)
+flags.DEFINE_string('data_dir', default_data_dir, 
+                    'Where to store the program results.')
+
+def main(argv):
+  vb_data = import_xcstats('boys_v2.csv') 
+  vg_data = import_xcstats('girls_v2.csv')
+  print(f'Read in {vb_data.shape[0]} boys and '
+        f'{vb_data.shape[0]} girls results')
+
+  # Work with the top 25% of results for now.
+  top_runner_percent = 25
+  vb_select, vb_runner_mapper, vb_course_mapper = prepare_xc_data(
+      vb_data,
+      place_fraction=top_runner_percent/100.0)
+  vg_select, vg_runner_mapper, vg_course_mapper = prepare_xc_data(
+      vg_data,
+      place_fraction=top_runner_percent/100.0)
+
+  vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
+    vb_select, chains=FLAGS.chains)
+  print(vb_map_estimate)
+
+  vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
+    vg_select, chains=FLAGS.chains)
+
+  scatter_df = create_result_frame(vb_data, vg_data,
+                                  vb_course_mapper, vg_course_mapper, 
+                                  vb_model_trace, vg_model_trace)
+  create_html_table(
+    scatter_df.loc[scatter_df['local_course']].sort_values('vb_difficulty'),
+    os.path.join(flags.data_dir, 'course_difficulties_local.html'))
+
+  create_html_table(
+      scatter_df, os.path.join(flags.data_dir, 'course_difficulties.html'))
+
 
 if __name__ == '__main__':
-  main(sys.argv)
+  app.run(main)
