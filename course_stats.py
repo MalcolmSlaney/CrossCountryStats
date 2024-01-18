@@ -1,5 +1,6 @@
 import datetime
 import os
+import sys
 
 import cloudpickle
 import numpy as np
@@ -14,8 +15,47 @@ import arviz as az
 import bokeh.io
 import bokeh.plotting
 
-
 ## Data and Model Code
+
+default_data_dir = '/content/gdrive/MyDrive/CrossCountry/XCStats'
+
+# https://discourse.pymc.io/t/how-save-pymc-v5-models/13022
+
+def save_model(filename, model, trace, map_estimate,
+               top_runner_percent, panda_data,
+               course_mapper, runner_mapper,
+               default_dir=default_data_dir):
+  if filename.startswith('/'):
+    full_filename = filename
+  else:
+    full_filename = os.path.join(default_dir, filename)
+
+  dict_to_save = {'model': model,
+                  'trace': trace,
+                  'top_runner_percent': top_runner_percent,
+                  'panda_data': panda_data,
+                  'course_mapper': course_mapper,
+                  'runner_mapper': runner_mapper,
+                  'map_estimate': map_estimate,
+                  }
+
+  with open(full_filename , 'wb') as buff:
+      cloudpickle.dump(dict_to_save, buff)
+
+
+def load_model(filename,
+               default_dir='/content/gdrive/MyDrive/CrossCountry/XCStats/'):
+  if filename.startswith('/'):
+    full_filename = filename
+  else:
+    full_filename = os.path.join(default_dir, filename)
+  with open(full_filename , 'rb') as buff:
+      model_dict = cloudpickle.load(buff)
+  return (model_dict['model'], model_dict['trace'],
+          model_dict['top_runner_percent'], model_dict['panda_data'],
+          model_dict['course_mapper'], model_dict['runner_mapper'],
+          model_dict['map_estimate'])
+
 
 ###Synthesize Data
 
@@ -44,14 +84,10 @@ def generate_xc_data(n: int = 4000,
   course_scale = course_difficulties[course_ids]
   runner_scale = runner_abilities[runner_ids]
   times = np.ones(n, dtype=float)*standard_time
-  if use_year: 
-    times -= runner_year*yearly_improvement
-  if use_month: 
-    times -= race_month*monthly_improvement
-  if use_course: 
-    times *= course_scale
-  if use_runner: 
-    times *= runner_scale
+  if use_year: times -= runner_year*yearly_improvement
+  if use_month: times -= race_month*monthly_improvement
+  if use_course: times *= course_scale
+  if use_runner: times *= runner_scale
   times += np.random.randn(n)*noise
 
   df = pd.DataFrame(data={'race_month': race_month,
@@ -60,7 +96,6 @@ def generate_xc_data(n: int = 4000,
                           'runner_ids': runner_ids,
                           'times': times})
   return df, course_difficulties, runner_abilities
-
 
 def create_xc_model(data: pd.DataFrame,
                     use_month: bool = True,
@@ -139,9 +174,6 @@ def extract_year(date):
   """Return the year of the race as an integer."""
   return parse_date(date).year
 
-
-default_data_dir = '/content/gdrive/MyDrive/CrossCountry/XCStats'
-
 def import_xcstats(
     csv_file: str,
     default_dir: str = default_data_dir) -> pd.DataFrame:
@@ -177,7 +209,6 @@ def import_xcstats(
                             'race_year': years})
   data_with_dates = pd.concat((data, race_data), axis=1)
   return data_with_dates
-
 
 def transform_ids(data: pd.DataFrame,
                   column_name: str) -> Tuple[pd.Series, Dict[Any, int]]:
@@ -226,7 +257,7 @@ def prepare_xc_data(data: pd.DataFrame,
   return data, runner_mapper, course_mapper
 
   
-def build_and_test_model(xc_data: pd.DataFrame) -> Tuple[
+def build_and_test_model(xc_data: pd.DataFrame, chains=2) -> Tuple[
     pm.Model, dict[str, np.ndarray], az.InferenceData]:
   """Find the MAP and parameter distributions for the given data."""
   xc_model = create_xc_model(xc_data)
@@ -234,7 +265,7 @@ def build_and_test_model(xc_data: pd.DataFrame) -> Tuple[
   map_estimate = pm.find_MAP(model=xc_model)
 
   print(f'Find the MCMC distribution for {xc_data.shape[0]} results....')
-  model_trace = pm.sample(model=xc_model)
+  model_trace = pm.sample(model=xc_model, chains=chains)
   return xc_model, map_estimate, model_trace
 
 
@@ -276,3 +307,118 @@ def load_model(filename,
           model_dict['top_runner_percent'], model_dict['panda_data'],
           model_dict['course_mapper'], model_dict['runner_mapper'],
           model_dict['map_estimate'])
+
+
+def create_markdown_table(df):
+  print('|Index | Course Name                      | Boys Difficulty | '
+        'Girls Difficulty | # Boys | # Girls |')
+  print('|-----:|---------------------------------:|'
+        '----------------:|'
+        '-----------------:|-------:|--------:|')
+  for index, row in df.iterrows():
+    print(f'|{index:5d} | {row["course_name"]:32s} | '
+          f'{row["vb_difficulty"]:2.3f}           |'
+          f'{row["vg_difficulty"]:2.3f}             |'
+          f'{row["boys_runner_count"]:5d}   |',
+          f'{row["girls_runner_count"]:5d}   |')
+
+
+html_header = """
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>California Course Difficulties</title>
+        <link rel="stylesheet" href="https://www.w3.org/WAI/content-assets/wai-aria-practices/patterns/table/examples/css/sortable-table.css">
+        <script src="https://www.w3.org/WAI/content-assets/wai-aria-practices/patterns/table/examples/js/sortable-table.js"></script>
+    </head>
+    <body>
+    <!--https://www.w3.org/WAI/ARIA/apg/patterns/table/examples/sortable-table/-->
+        <div class="table-wrap">
+            <table class="sortable">
+                <caption>
+                    Course difficulities by Bayesian Modeling
+                    <span class="sr-only">, column headers with buttons are sortable.</span>
+                </caption>
+                <thead>
+                    <tr>
+                        <th aria-sort="ascending">
+							            <button>Course Name<span aria-hidden="true"></span></button>
+						            </th>
+                        <th class="num">
+							            <button>Boys Difficulty<span aria-hidden="true"></span></button>
+						            </th>
+                        <th class="num">
+							            <button>Girls Difficulty<span aria-hidden="true"></span></button>
+						            </th>
+                        <th class="num">
+                          <button># Boys<span aria-hidden="true"></span></button>
+						            </th>
+                        <th class="num">
+							            <button># Girls<span aria-hidden="true"></span></button>
+						            </th>
+                        <th>Local</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+html_footer = """
+      </table>
+    </div>
+    <p>       
+  </body>
+</html>
+"""
+
+# Note, for reasons I don't understand, at least one field in the table headers
+# must be non sortable.  I'm using local for that now.
+
+def create_html_table(df, filename):
+  with open(filename, 'w') as f:
+    print(html_header, file=f)
+    for index, row in df.iterrows():
+      print('<tr>', file=f)
+      print(f'<td>{row["course_name"]}</td>', 
+            f'<td>{row["vb_difficulty"]:2.4f}</td>'
+            f'<td>{row["vg_difficulty"]:2.4f}</td>'
+            f'<td>{row["boys_runner_count"]:5d}</td>'
+            f'<td>{row["girls_runner_count"]:5d}</td>'
+            f'<td>{row["local_course"]}</td>'
+            f'</tr>', file=f)
+    print(html_footer, file=f)
+
+
+def plot_difficulty_comparison(scatter_df:
+  # Drop the data point for Spooner since it's a very long distance.
+  p = bokeh.plotting.figure(title="Varsity Boy/Girl Course Difficulty Comparison",
+                            x_axis_label='Girls MAP Estimate',
+                            y_axis_label='Boys MAP Estimate',
+                            x_range=(0.2, 1.4),  # Skip Spooner
+                            y_range=(0.2, 1.4),  # Skip Spooner
+                            tooltips=[
+                                ("Course Name", "@course_name"),
+                                ("Course Distance", "@course_distances"),
+                                ("Course Difficulty (Boys)", "@vb_difficulty"),
+                                ("Course Difficulty (Girls)", "@vg_difficulty"),
+                                ("Boys Runner Count", "@boys_runner_count"),
+                                ("Girls Runner Count", "@girls_runner_count")
+                                ])
+
+  # Compare the boys and girls course difficulties with a scatter plot
+  far_data = scatter_df.loc[~scatter_df['local_course']]
+  p.cross(source=far_data, x='vg_difficulty', y='vb_difficulty',
+          legend_label="Other Courses",
+          line_color='blue')
+
+  local_data = scatter_df.loc[scatter_df['local_course']]
+  p.circle(source=local_data, x='vg_difficulty', y='vb_difficulty',
+          legend_label="Local Courses",
+          line_color='red', fill_color='red', size=6)
+
+  p.legend.location = 'top_left'
+  return p
+
+main(argv)
+
+if __name__ == '__main__':
+  main(sys.argv)
