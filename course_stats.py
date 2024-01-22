@@ -432,8 +432,10 @@ html_footer = """
 # Note, for reasons I don't understand, at least one field in the table headers
 # must be non sortable.  I'm using local for that now.
 
-def create_html_table(df, filename):
+def create_html_table(df, filename, title=None):
   with open(filename, 'w') as f:
+    if title:
+      html_header = html_header.replace('California Course Difficulties', title)
     print(html_header, file=f)
     for index, row in df.iterrows():
       print('<tr>', file=f)
@@ -538,12 +540,16 @@ def main(argv):
   scatter_df = create_result_frame(vb_data, vg_data,
                                   vb_course_mapper, vg_course_mapper, 
                                   vb_model_trace, vg_model_trace)
+  local_df = scatter_df.loc[
+    scatter_df['local_course']].sort_values('vb_difficulty')
   create_html_table(
-    scatter_df.loc[scatter_df['local_course']].sort_values('vb_difficulty'),
-    os.path.join(flags.data_dir, 'course_difficulties_local.html'))
+    local_df,
+    os.path.join(flags.data_dir, 'course_difficulties_local.html'),
+    title=f'Bay Area Course Difficulties ({len(local_df.keys())} courses)')
 
   create_html_table(
-      scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'))
+      scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
+      title=f'California Course Difficulties ({len(scatter_df.keys())} courses)')
 
 
 if __name__ == '__main__':
