@@ -260,7 +260,7 @@ def prepare_xc_data(data: pd.DataFrame,
   return data, runner_mapper, course_mapper
 
   
-def build_and_test_model(xc_data: pd.DataFrame, chains=2) -> Tuple[
+def build_and_test_model(xc_data: pd.DataFrame, chains=2, draws=1000) -> Tuple[
     pm.Model, dict[str, np.ndarray], az.InferenceData]:
   """Find the MAP and parameter distributions for the given data."""
   xc_model = create_xc_model(xc_data)
@@ -268,7 +268,7 @@ def build_and_test_model(xc_data: pd.DataFrame, chains=2) -> Tuple[
   map_estimate = pm.find_MAP(model=xc_model)
 
   print(f'Find the MCMC distribution for {xc_data.shape[0]} results....')
-  model_trace = pm.sample(model=xc_model, chains=chains)
+  model_trace = pm.sample(model=xc_model, chains=chains, draws=draws)
   return xc_model, map_estimate, model_trace
 
 
@@ -503,10 +503,13 @@ def get_course_distance(n: str) -> str:
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('chains', 2, 'Number of MCMC chains to explore',
                      lower_bound=1)
+flags.DEFINE_integer('draws', 1000, 'Number of draws to make when sampling',
+                     lower_bound=1)
 flags.DEFINE_string('data_dir', default_data_dir, 
                     'Where to store the program results.')
 
 def main(argv):
+  print(f'Have {os.cpu_count()} CPUs available for this job.')
   vb_data = import_xcstats('boys_v2.csv') 
   vg_data = import_xcstats('girls_v2.csv')
   print(f'Read in {vb_data.shape[0]} boys and '
@@ -521,22 +524,24 @@ def main(argv):
       vg_data,
       place_fraction=top_runner_percent/100.0)
 
+  print('\nBuilding boys model')
   vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
-    vb_select, chains=FLAGS.chains)
+    vb_select, chains=FLAGS.chains, draws=FLAGS.draws)
   print(vb_map_estimate)
 
+  print('\nBuilding girls model')
   vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
-    vg_select, chains=FLAGS.chains)
+    vg_select, chains=FLAGS.chains, draws=FLAGS.draws)
 
   scatter_df = create_result_frame(vb_data, vg_data,
                                   vb_course_mapper, vg_course_mapper, 
                                   vb_model_trace, vg_model_trace)
   create_html_table(
     scatter_df.loc[scatter_df['local_course']].sort_values('vb_difficulty'),
-    os.path.join(flags.data_dir, 'course_difficulties_local.html'))
+    os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'))
 
   create_html_table(
-      scatter_df, os.path.join(flags.data_dir, 'course_difficulties.html'))
+      scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'))
 
 
 if __name__ == '__main__':
