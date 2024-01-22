@@ -433,6 +433,7 @@ html_footer = """
 # must be non sortable.  I'm using local for that now.
 
 def create_html_table(df, filename, title=None):
+  global html_header
   with open(filename, 'w') as f:
     if title:
       html_header = html_header.replace('California Course Difficulties', title)
@@ -677,19 +678,7 @@ def main(argv):
     vg_select, chains=FLAGS.chains, draws=FLAGS.draws)
   print(vg_map_estimate)
 
-  scatter_df = create_result_frame(vb_data, vg_data,
-                                  vb_course_mapper, vg_course_mapper, 
-                                  vb_model_trace, vg_model_trace)
-  local_df = scatter_df.loc[scatter_df['local_course'] == True]
-  create_html_table(
-    local_df,
-    os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
-    title=f'Bay Area Course Difficulties ({len(local_df.keys())} courses)')
-
-  create_html_table(
-      scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
-      title=f'California Course Difficulties ({len(scatter_df.keys())} courses)')
-
+  # Plot all the (VB) results.
   vb_monthly_trace_means = plot_monthly_slope_predictions(
       vb_model_trace,
       title='Histogram of VB Monthly Slope Predictions',
@@ -715,5 +704,19 @@ def main(argv):
       filename=os.path.join(default_data_dir, 
                             'vb_year_month_course_tradeoff.png'))
   
+  # Create course difficulty summary tables
+  scatter_df = create_result_frame(vb_data, vg_data,
+                                  vb_course_mapper, vg_course_mapper, 
+                                  vb_model_trace, vg_model_trace)
+  local_df = scatter_df.loc[scatter_df['local_course'] == True]
+  create_html_table(
+    local_df,
+    os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
+    title=f'Bay Area Course Difficulties ({len(local_df.keys())} courses)')
+
+  create_html_table(
+      scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
+      title=f'California Course Difficulties ({len(scatter_df.keys())} courses)')
+
 if __name__ == '__main__':
   app.run(main)
