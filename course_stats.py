@@ -533,6 +533,7 @@ def main(argv):
   print('\nBuilding girls model')
   vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
     vg_select, chains=FLAGS.chains, draws=FLAGS.draws)
+  print(vg_map_estimate)
 
   scatter_df = create_result_frame(vb_data, vg_data,
                                   vb_course_mapper, vg_course_mapper, 
