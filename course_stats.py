@@ -503,6 +503,146 @@ def get_course_distance(n: str) -> str:
   pieces = n.rsplit(' ', 1)
   return pieces[0], float(pieces[1][1:-1])
 
+
+################## Plotting Routines ########################
+
+def plot_map_course_difficulties(map_estimates, 
+                                 title='Histogram of Course Difficulties (MAP)',
+                                 filename=None):
+  course_data = map_estimates['course_est']
+  course_data[course_data > 3] = np.nan  # Drop Spooner
+  plt.hist(course_data, 20)
+  plt.title(title)
+  plt.xlabel('Course Difficulty (arbitrary units)');
+  if filename:
+    plt.savefig(filename)
+
+
+def plot_map_runner_abilities(map_estimates, 
+                              title='Histogram of Runner Abilities (MAP)',
+                              filename=None):
+  course_data = map_estimates['runner_est']
+  course_data[course_data > 3] = np.nan  # Drop Spooner
+  plt.hist(course_data, 20)
+  plt.title(title)
+  plt.xlabel('Relative Runner Abilities (arbitrary units)');
+  if filename:
+    plt.savefig(filename)
+
+
+def plot_monthly_slope_predictions(
+    trace_data, 
+    title='Histogram of Monthly Slope Predictions', 
+    filename=None):
+  
+  def add_line(x, label):
+    a = plt.axis()
+    plt.plot([x, x], a[2:], '--', label=label)
+    plt.text(x, np.mean(a[2:]), f'{x:4.3}')
+
+  monthly_trace_means = []
+  d = trace_data.posterior.monthly_slope.values
+  min = np.min(d.flatten())
+  max = np.max(d.flatten())
+  bins = np.linspace(min, max, 21)
+  for i in range(d.shape[0]):
+    monthly_trace_means.append(np.mean(d[i, :]))
+    plt.hist(d[i, :], bins=bins, alpha=0.5, label=f'Trace {i}')
+  plt.xlabel('Monthly Improvement During Each Season (s)');
+  plt.title(title);
+
+  add_line(np.mean(d), 'Trace Mean')
+  plt.legend()
+
+  if filename:
+    plt.savefig(filename)
+  return monthly_trace_means
+
+
+def plot_yearly_slope_predictions(
+    trace_data, 
+    title='Histogram of Yearly Slope Predictions', 
+    filename=None):
+  
+  def add_line(x, label):
+    a = plt.axis()
+    plt.plot([x, x], a[2:], '--', label=label)
+    plt.text(x, np.mean(a[2:]), f'{x:4.3}')
+
+  yearly_trace_means = []
+  d = trace_data.posterior.yearly_slope.values
+  min = np.min(d.flatten())
+  max = np.max(d.flatten())
+  bins = np.linspace(min, max, 21)
+  for i in range(d.shape[0]):
+    yearly_trace_means.append(np.mean(d[i, :]))
+    plt.hist(d[i, :], bins=bins, alpha=0.5, label=f'Trace {i}')
+  plt.xlabel('Yearly Improvement During Each Season (s)');
+  plt.title(title);
+
+  add_line(np.mean(d), 'Trace Mean')
+  plt.legend()
+
+  if filename:
+    plt.savefig(filename)
+  return yearly_trace_means
+
+
+def plot_map_trace_difficulty_comparison(
+    map_estimate,
+    model_trace,
+    title='Comparison of Course Difficult Estimates',
+    difficulty_limit=2.2,  # Drop Spooner since it's way long.
+    filename=None):
+  # Plot the MAP vs. mean trace estimate of the course difficulties.
+  d = model_trace.posterior.course_est.values
+  difficulty_trace_slopes = []
+  for i in range(d.shape[0]):
+    trace_difficulties = np.mean(d[i, :, :], axis=0)
+
+    # Estimate the MAP vs. Trace slope
+    x = np.vstack([map_estimate['course_est'],
+                  np.ones(len(map_estimate['course_est']))])
+    good_data = ~np.isnan(map_estimate['course_est'])
+    m = np.linalg.lstsq(x.T[good_data, :],
+                          trace_difficulties[good_data], rcond=None)[0]
+    difficulty_trace_slopes.append(m[0])
+
+    plt.scatter(map_estimate['course_est'], trace_difficulties,
+                label=f'Trace {i}', alpha=0.1)
+  plt.xlim(0, difficulty_limit)
+  plt.ylim(0, difficulty_limit)
+  plt.plot([0, 2], [0, 2], '--')
+  plt.xlabel('MAP Estimate')
+  plt.ylabel('Mean of Trace')
+  plt.legend()
+  plt.title('Comparison of VB\'s Course Difficulties');
+  if filename:
+    plt.savefig(filename)
+  return difficulty_trace_slopes
+  
+
+def plot_year_month_difficulty_tradeoff(
+    monthly_trace_means,
+    yearly_trace_means,
+    difficulty_trace_slopes,
+    title='Tradeoff between year/month and course difficulties',
+    filename=None):
+  plt.plot(monthly_trace_means,
+           difficulty_trace_slopes,
+          'x', label='Monthly Slope');
+  plt.plot(yearly_trace_means,
+           difficulty_trace_slopes,
+          'o', label='Yearly Slope')
+  plt.xlabel('Month or Yearly Slope')
+  plt.ylabel('Mean slope of Course Difficulty')
+  plt.title('Tradeoff between year/month and course difficulties')
+  plt.legend()
+  if filename:
+    plt.savefig(filename)
+
+################## Plotting Routines ########################
+
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('chains', 2, 'Number of MCMC chains to explore',
                      lower_bound=1)
@@ -540,17 +680,40 @@ def main(argv):
   scatter_df = create_result_frame(vb_data, vg_data,
                                   vb_course_mapper, vg_course_mapper, 
                                   vb_model_trace, vg_model_trace)
-  local_df = scatter_df.loc[
-    scatter_df['local_course']].sort_values('vb_difficulty')
+  local_df = scatter_df.loc[scatter_df['local_course'] == True]
   create_html_table(
     local_df,
-    os.path.join(flags.data_dir, 'course_difficulties_local.html'),
+    os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
     title=f'Bay Area Course Difficulties ({len(local_df.keys())} courses)')
 
   create_html_table(
       scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
       title=f'California Course Difficulties ({len(scatter_df.keys())} courses)')
 
-
+  vb_monthly_trace_means = plot_monthly_slope_predictions(
+      vb_model_trace,
+      title='Histogram of VB Monthly Slope Predictions',
+      filename=os.path.join(default_data_dir, 'vb_monthly_slope.png'))
+  
+  vb_yearly_trace_means = plot_yearly_slope_predictions(
+      vb_model_trace,
+      title='Histogram of VB Yearly Slope Predictions',
+      filename=os.path.join(default_data_dir, 'vb_yearly_slope.png'))
+  
+  vb_difficulty_trace_slopes = plot_map_trace_difficulty_comparison(
+      vb_map_estimate,
+      vb_model_trace,
+      title='Comparison of VB Course Difficulty Estimates',
+      filename=os.path.join(default_data_dir, 
+                            'vb_course_difficulty_comparison.png'))
+  
+  plot_year_month_difficulty_tradeoff(
+      vb_monthly_trace_means,
+      vb_yearly_trace_means,
+      vb_difficulty_trace_slopes,
+      title='Tradeoff between VB year/month and course difficulties',
+      filename=os.path.join(default_data_dir, 
+                            'vb_year_month_course_tradeoff.png'))
+  
 if __name__ == '__main__':
   app.run(main)
