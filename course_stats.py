@@ -264,7 +264,8 @@ def build_and_test_model(xc_data: pd.DataFrame, chains=2, draws=1000) -> Tuple[
     pm.Model, dict[str, np.ndarray], az.InferenceData]:
   """Find the MAP and parameter distributions for the given data."""
   xc_model = create_xc_model(xc_data)
-  print(f'Find the MAP estimate for {xc_data.shape[0]} results....')
+  print(f'Find the MAP estimate for {xc_data.shape[0]} results.')
+  print(f'   Calculating {chains} chains each with {draws} draws.')
   map_estimate = pm.find_MAP(model=xc_model)
 
   print(f'Find the MCMC distribution for {xc_data.shape[0]} results....')
@@ -538,7 +539,7 @@ def main(argv):
                                   vb_model_trace, vg_model_trace)
   create_html_table(
     scatter_df.loc[scatter_df['local_course']].sort_values('vb_difficulty'),
-    os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'))
+    os.path.join(flags.data_dir, 'course_difficulties_local.html'))
 
   create_html_table(
       scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'))
