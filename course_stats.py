@@ -261,7 +261,11 @@ def prepare_xc_data(data: pd.DataFrame,
   return data, runner_mapper, course_mapper
 
   
-def build_and_test_model(xc_data: pd.DataFrame, chains=2, draws=1000) -> Tuple[
+def build_and_test_model(xc_data: pd.DataFrame, 
+                         chains: int = 2, 
+                         draws: int = 1000, 
+                         tune: int = 1000,  # Shorten for debugging
+                         ) -> Tuple[
     pm.Model, dict[str, np.ndarray], az.InferenceData]:
   """Find the MAP and parameter distributions for the given data."""
   xc_model = create_xc_model(xc_data)
@@ -270,7 +274,8 @@ def build_and_test_model(xc_data: pd.DataFrame, chains=2, draws=1000) -> Tuple[
   map_estimate = pm.find_MAP(model=xc_model)
 
   print(f'Find the MCMC distribution for {xc_data.shape[0]} results....')
-  model_trace = pm.sample(model=xc_model, chains=chains, draws=draws)
+  model_trace = pm.sample(model=xc_model, chains=chains, 
+                          draws=draws, tune=tune)
   return xc_model, map_estimate, model_trace
 
 

@@ -88,7 +88,7 @@ class XCStatsTest(absltest.TestCase):
     plt.ylabel('MAP Estimate')
     plt.savefig('Results/simulated_data_everything_runner_abilities.png')
 
-  def test_everything2(self):
+  def test_all_plots(self):
     default_data_dir = '/tmp'
 
     (df,
@@ -96,7 +96,7 @@ class XCStatsTest(absltest.TestCase):
      runner_abilities) = course_stats.generate_xc_data(noise=10)
 
     xc_model, map_estimate, model_trace = course_stats.build_and_test_model(
-        df, chains=1, draws=100)
+        df, chains=1, draws=100, tune=100)  # No tuning, just want to see plots.
 
     monthly_trace_means = course_stats.plot_monthly_slope_predictions(
         model_trace,
