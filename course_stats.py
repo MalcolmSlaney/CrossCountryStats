@@ -446,8 +446,8 @@ def create_html_table(df: pd.DataFrame, filename: str, title: str = None):
       print(f'<td>{row["course_name"]}</td>', 
             f'<td>{row["vb_difficulty"]:2.4f}</td>'
             f'<td>{row["vg_difficulty"]:2.4f}</td>'
-            f'<td>{row["boys_runner_count"]</td>'
-            f'<td>{row["girls_runner_count"]</td>'
+            f'<td>{row["boys_runner_count"]}</td>'
+            f'<td>{row["girls_runner_count"]}</td>'
             f'<td>{row["local_course"]}</td>'
             f'</tr>', file=f)
     print(html_footer, file=f)
