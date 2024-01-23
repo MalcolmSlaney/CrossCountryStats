@@ -29,8 +29,8 @@ default_cache_dir = 'Cache'
 def save_model(filename, model, trace, map_estimate,
                top_runner_percent, panda_data,
                course_mapper, runner_mapper,
-               default_dir=default_data_dir):
-  if filename.startswith('/'):
+               default_dir: Optional[str] = default_cache_dir) -> None:
+  if filename.startswith('/') or default_dir is None:
     full_filename = filename
   else:
     full_filename = os.path.join(default_dir, filename)
@@ -49,8 +49,8 @@ def save_model(filename, model, trace, map_estimate,
 
 
 def load_model(filename,
-               default_dir='/content/gdrive/MyDrive/CrossCountry/XCStats/'):
-  if filename.startswith('/'):
+               default_dir: Optional[str] = default_cache_dir):
+  if filename.startswith('/') or default_dir is None:
     full_filename = filename
   else:
     full_filename = os.path.join(default_dir, filename)
@@ -673,16 +673,17 @@ def main(argv):
     print('\nLoading boys model')
     (vb_xc_model, vb_model_trace, vb_map_estimate,
      top_runner_percent, vb_data,
-     vb_course_mapper, vb_runner_mapper) = load_model(cache_file)
+     vb_course_mapper, vb_runner_mapper) = load_model(cache_file, None)
   else:
     print('\nBuilding boys model...')
     vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
       vb_select, chains=FLAGS.chains, draws=FLAGS.draws)
     if FLAGS.cache_dir:
       save_model(cache_file, 
-                vb_xc_model, vb_model_trace, vb_map_estimate,
-                top_runner_percent, vb_data,
-                vb_course_mapper, vb_runner_mapper)
+                 vb_xc_model, vb_model_trace, vb_map_estimate,
+                 top_runner_percent, vb_data,
+                 vb_course_mapper, vb_runner_mapper,
+                 default_cache_dir=None)
   print(vb_map_estimate)
 
   cache_file = os.path.join(FLAGS.cache_dir, 'vg_analysis.pickle')
@@ -690,16 +691,17 @@ def main(argv):
     print('\nLoading girls model')
     (vg_xc_model, vg_model_trace, vg_map_estimate,
      top_runner_percent, vg_data,
-     vg_course_mapper, vg_runner_mapper) = load_model(cache_file)
+     vg_course_mapper, vg_runner_mapper) = load_model(cache_file, None)
   else:
     print('\nBuilding girls model...')
     vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
       vg_select, chains=FLAGS.chains, draws=FLAGS.draws)
     if FLAGS.cache_dir:
       save_model(cache_file, 
-                vg_xc_model, vg_model_trace, vg_map_estimate,
-                top_runner_percent, vg_data,
-                vg_course_mapper, vg_runner_mapper)
+                 vg_xc_model, vg_model_trace, vg_map_estimate,
+                 top_runner_percent, vg_data,
+                 vg_course_mapper, vg_runner_mapper,
+                 default_cache_dir=None)
   print(vg_map_estimate)
 
   # Plot all the (VB) results.
