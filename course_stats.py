@@ -446,8 +446,8 @@ def create_html_table(df: pd.DataFrame, filename: str, title: str = None):
       print(f'<td>{row["course_name"]}</td>', 
             f'<td>{row["vb_difficulty"]:2.4f}</td>'
             f'<td>{row["vg_difficulty"]:2.4f}</td>'
-            f'<td>{row["boys_runner_count"]:5d}</td>'
-            f'<td>{row["girls_runner_count"]:5d}</td>'
+            f'<td>{row["boys_runner_count"]</td>'
+            f'<td>{row["girls_runner_count"]</td>'
             f'<td>{row["local_course"]}</td>'
             f'</tr>', file=f)
     print(html_footer, file=f)
@@ -721,7 +721,7 @@ def main(argv):
                                    vb_course_mapper, vg_course_mapper, 
                                    vb_model_trace, vg_model_trace)
   local_df = scatter_df.loc[scatter_df['local_course'] == True].copy()
-  table_title = ('Bay Area Course Difficulties ({len(local_df)} courses)')
+  table_title = f'Bay Area Course Difficulties ({len(local_df)} courses)'
   create_html_table(
     local_df,
     os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
