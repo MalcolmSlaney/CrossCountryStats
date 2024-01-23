@@ -1,5 +1,6 @@
 from absl.testing import absltest
 import numpy as np
+import os
 import pymc as pm
 import matplotlib.pyplot as plt
 
@@ -86,6 +87,46 @@ class XCStatsTest(absltest.TestCase):
     plt.xlabel('Simulated Ground Truth')
     plt.ylabel('MAP Estimate')
     plt.savefig('Results/simulated_data_everything_runner_abilities.png')
+
+  def test_everything2(self):
+    default_data_dir = '/tmp'
+
+    (df,
+     course_difficulties,
+     runner_abilities) = course_stats.generate_xc_data(noise=10)
+
+    xc_model, map_estimate, model_trace = course_stats.build_and_test_model(
+        df, chains=1, draws=100)
+
+    monthly_trace_means = course_stats.plot_monthly_slope_predictions(
+        model_trace,
+        title='Histogram of VB Monthly Slope Predictions',
+        filename=os.path.join(default_data_dir, 'monthly_slope.png'))
+    self.assertTrue(os.path.exists('/tmp/monthly_slope.png'))
+  
+    yearly_trace_means = course_stats.plot_yearly_slope_predictions(
+        model_trace,
+        title='Histogram of VB Yearly Slope Predictions',
+        filename=os.path.join(default_data_dir, 'yearly_slope.png'))
+    self.assertTrue(os.path.exists('/tmp/yearly_slope.png'))
+    
+    difficulty_trace_slopes = course_stats.plot_map_trace_difficulty_comparison(
+        map_estimate,
+        model_trace,
+        title='Comparison of VB Course Difficulty Estimates',
+        filename=os.path.join(default_data_dir, 
+                              'course_difficulty_comparison.png'))
+    self.assertTrue(os.path.exists('/tmp/course_difficulty_comparison.png'))
+    
+    course_stats.plot_year_month_difficulty_tradeoff(
+        monthly_trace_means,
+        yearly_trace_means,
+        difficulty_trace_slopes,
+        title='Tradeoff between VB year/month and course difficulties',
+        filename=os.path.join(default_data_dir, 
+                              'year_month_course_tradeoff.png'))
+    self.assertTrue(os.path.exists('/tmp/year_month_course_tradeoff.png'))
+
 
 if __name__ == '__main__':
   absltest.main()

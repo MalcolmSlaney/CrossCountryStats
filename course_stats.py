@@ -60,7 +60,7 @@ def load_model(filename,
           model_dict['map_estimate'])
 
 
-###Synthesize Data
+######################## Synthesize Data ##############################
 
 def generate_xc_data(n: int = 4000,
                      num_runners: int = 400,
@@ -73,7 +73,7 @@ def generate_xc_data(n: int = 4000,
                      use_year: bool = True,
                      use_course: bool = True,
                      use_runner: bool = True,
-                     ):
+                     ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
   race_month = np.random.uniform(0, 4, n)
   runner_year = np.random.randint(0, 4, n)
 
@@ -106,7 +106,7 @@ def create_xc_model(data: pd.DataFrame,
                     use_course: bool = True,
                     use_runner: bool = True,
                     noise_seconds: float = 10,
-                    ):
+                    ) -> pm.Model:
   """Build a model connecting runner and course parameters,
   along with monthly and yearly improvements to race time. This model
   assumes the following fields are in the Panda dataframe.
@@ -279,11 +279,13 @@ def find_course_name(name, mapper):
 
 # Gather the data so we can plot a scatter plot showing boy's and girl's
 # course difficuties.
-def create_result_frame(vb_data, vg_data,
-                        vb_course_mapper, vg_course_mapper, 
-                        vb_model_trace, vg_model_trace, local_courses=[],
-                        vb_map_estimate=None, vg_map_estimate=None,
-                        use_map = False, normalize_to_crystal=True):
+def create_result_frame(
+    vb_data: pd.DataFrame, vg_data: pd.DataFrame,
+    vb_course_mapper: Dict[Any, int], 
+    vg_course_mapper: Dict[Any, int], 
+    vb_model_trace, vg_model_trace, local_courses=[],
+    vb_map_estimate=None, vg_map_estimate=None,
+    use_map = False, normalize_to_crystal=True):
   if use_map:
     vb_course_est = vb_map_estimate['course_est']
     vg_course_est = vg_map_estimate['course_est']
@@ -469,7 +471,8 @@ local_schools = [830, # Palo Alto
                  10, # Lynbrook
 ]
 
-def find_local_courses(pd_data, local_schools=local_schools):
+def find_local_courses(pd_data: pd.DataFrame, 
+                       local_schools: List[int] = local_schools):
   local_courses = pd_data.loc[pd_data['schoolID'].isin(local_schools)]
   return local_courses.courseName.unique()
 
@@ -480,10 +483,11 @@ def get_course_distance(n: str) -> str:
 
 ################## Plotting Routines ########################
 
-def plot_map_course_difficulties(map_estimates, 
-                                 title='Histogram of Course Difficulties (MAP)',
-                                 filename=None,
-                                 difficulty_limit=3):
+def plot_map_course_difficulties(
+    map_estimates, 
+    title: str = 'Histogram of Course Difficulties (MAP)',
+    filename: str = None,
+    difficulty_limit: int = 3):
   course_data = map_estimates['course_est']
   course_data[course_data > difficulty_limit] = np.nan  # Drop Spooner
   plt.clf()
@@ -508,10 +512,17 @@ def plot_map_runner_abilities(map_estimates,
     plt.savefig(filename)
 
 
+def line_hist(data, bins=10, **kwargs):
+  y, binEdges = np.histogram(data, bins=bins)
+  bincenters = 0.5 * (binEdges[1:] + binEdges[:-1])
+  plt.plot(bincenters, y, **kwargs)
+
+
 def plot_monthly_slope_predictions(
-    trace_data, 
-    title='Histogram of Monthly Slope Predictions', 
-    filename=None):
+    trace_data: az.InferenceData, 
+    title: str = 'Histogram of Monthly Slope Predictions',
+    num_bins: int = 20,
+    filename: str = None) -> List[np.ndarray]:
   
   def add_line(x, label):
     a = plt.axis()
@@ -522,11 +533,11 @@ def plot_monthly_slope_predictions(
   d = trace_data.posterior.monthly_slope.values
   min = np.min(d.flatten())
   max = np.max(d.flatten())
-  bins = np.linspace(min, max, 21)
+  bins = np.linspace(min, max, num_bins+1)
   plt.clf()
   for i in range(d.shape[0]):
     monthly_trace_means.append(np.mean(d[i, :]))
-    plt.hist(d[i, :], bins=bins, alpha=0.5, label=f'Trace {i}')
+    line_hist(d[i, :], bins=bins, alpha=0.5, label=f'Trace {i}')
   plt.xlabel('Monthly Improvement During Each Season (s)');
   plt.title(title);
 
@@ -539,9 +550,10 @@ def plot_monthly_slope_predictions(
 
 
 def plot_yearly_slope_predictions(
-    trace_data, 
-    title='Histogram of Yearly Slope Predictions', 
-    filename=None):
+    trace_data: az.InferenceData, 
+    title: str = 'Histogram of Yearly Slope Predictions', 
+    num_bins: int = 20,
+    filename: str = None) -> List[np.ndarray]:
   
   def add_line(x, label):
     a = plt.axis()
@@ -552,11 +564,11 @@ def plot_yearly_slope_predictions(
   d = trace_data.posterior.yearly_slope.values
   min = np.min(d.flatten())
   max = np.max(d.flatten())
-  bins = np.linspace(min, max, 21)
+  bin_locs = np.linspace(min, max, num_bins+1)
   plt.clf()
   for i in range(d.shape[0]):
     yearly_trace_means.append(np.mean(d[i, :]))
-    plt.hist(d[i, :], bins=bins, alpha=0.5, label=f'Trace {i}')
+    line_hist(d[i, :], bins=bin_locs, alpha=0.5, label=f'Trace {i}')
   plt.xlabel('Yearly Improvement During Each Season (s)');
   plt.title(title);
 
@@ -570,10 +582,10 @@ def plot_yearly_slope_predictions(
 
 def plot_map_trace_difficulty_comparison(
     map_estimate,
-    model_trace,
+    model_trace: az.InferenceData,
     title='Comparison of Course Difficult Estimates',
     difficulty_limit=2.2,  # Drop Spooner since it's way long.
-    filename=None):
+    filename=None) -> List[np.ndarray]:
   # Plot the MAP vs. mean trace estimate of the course difficulties.
   d = model_trace.posterior.course_est.values
   plt.clf()
@@ -624,7 +636,7 @@ def plot_year_month_difficulty_tradeoff(
     plt.savefig(filename)
 
 
-def plot_difficulty_comparison(scatter_df):
+def plot_difficulty_comparison(scatter_df: pd.DataFrame):
   # Drop the data point for Spooner since it's a very long distance.
   p = bokeh.plotting.figure(title="Varsity Boy/Girl Course Difficulty Comparison",
                             x_axis_label='Girls MAP Estimate',
@@ -691,6 +703,12 @@ def main(argv):
   print(vg_map_estimate)
 
   # Plot all the (VB) results.
+  plot_map_course_difficulties(
+      vb_map_estimate, 
+      title = 'Histogram of VB Course Difficulties (MAP)',
+      filename = os.path.join(default_data_dir, 
+                              'vb_map_course_difficulties.png'))
+
   vb_monthly_trace_means = plot_monthly_slope_predictions(
       vb_model_trace,
       title='Histogram of VB Monthly Slope Predictions',
@@ -733,6 +751,8 @@ def main(argv):
   create_html_table(
       scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
       title=table_title)
+  
+  print('All done.')
 
 if __name__ == '__main__':
   app.run(main)
