@@ -509,9 +509,11 @@ def get_course_distance(n: str) -> str:
 
 def plot_map_course_difficulties(map_estimates, 
                                  title='Histogram of Course Difficulties (MAP)',
-                                 filename=None):
+                                 filename=None,
+                                 difficulty_limit=3):
   course_data = map_estimates['course_est']
-  course_data[course_data > 3] = np.nan  # Drop Spooner
+  course_data[course_data > difficulty_limit] = np.nan  # Drop Spooner
+  plt.clf()
   plt.hist(course_data, 20)
   plt.title(title)
   plt.xlabel('Course Difficulty (arbitrary units)');
@@ -521,9 +523,11 @@ def plot_map_course_difficulties(map_estimates,
 
 def plot_map_runner_abilities(map_estimates, 
                               title='Histogram of Runner Abilities (MAP)',
-                              filename=None):
+                              filename=None,
+                              difficulty_limit=3):
   course_data = map_estimates['runner_est']
-  course_data[course_data > 3] = np.nan  # Drop Spooner
+  course_data[course_data > difficulty_limit] = np.nan  # Drop Spooner
+  plt.clf()
   plt.hist(course_data, 20)
   plt.title(title)
   plt.xlabel('Relative Runner Abilities (arbitrary units)');
@@ -546,6 +550,7 @@ def plot_monthly_slope_predictions(
   min = np.min(d.flatten())
   max = np.max(d.flatten())
   bins = np.linspace(min, max, 21)
+  plt.clf()
   for i in range(d.shape[0]):
     monthly_trace_means.append(np.mean(d[i, :]))
     plt.hist(d[i, :], bins=bins, alpha=0.5, label=f'Trace {i}')
@@ -575,6 +580,7 @@ def plot_yearly_slope_predictions(
   min = np.min(d.flatten())
   max = np.max(d.flatten())
   bins = np.linspace(min, max, 21)
+  plt.clf()
   for i in range(d.shape[0]):
     yearly_trace_means.append(np.mean(d[i, :]))
     plt.hist(d[i, :], bins=bins, alpha=0.5, label=f'Trace {i}')
@@ -597,6 +603,7 @@ def plot_map_trace_difficulty_comparison(
     filename=None):
   # Plot the MAP vs. mean trace estimate of the course difficulties.
   d = model_trace.posterior.course_est.values
+  plt.clf()
   difficulty_trace_slopes = []
   for i in range(d.shape[0]):
     trace_difficulties = np.mean(d[i, :, :], axis=0)
@@ -629,6 +636,7 @@ def plot_year_month_difficulty_tradeoff(
     difficulty_trace_slopes,
     title='Tradeoff between year/month and course difficulties',
     filename=None):
+  plt.clf()
   plt.plot(monthly_trace_means,
            difficulty_trace_slopes,
           'x', label='Monthly Slope');
@@ -642,7 +650,7 @@ def plot_year_month_difficulty_tradeoff(
   if filename:
     plt.savefig(filename)
 
-################## Plotting Routines ########################
+################## Main Program ########################
 
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('chains', 2, 'Number of MCMC chains to explore',
@@ -709,14 +717,18 @@ def main(argv):
                                   vb_course_mapper, vg_course_mapper, 
                                   vb_model_trace, vg_model_trace)
   local_df = scatter_df.loc[scatter_df['local_course'] == True]
+  table_title = ('Bay Area Course Difficulties ({len(local_df)} courses)')
   create_html_table(
     local_df,
     os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
-    title=f'Bay Area Course Difficulties ({len(local_df.keys())} courses)')
+    title=table_title)
 
+
+  table_title = ('California Course Difficulties '
+                 f'({len(scatter_df.keys())} courses)')
   create_html_table(
       scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
-      title=f'California Course Difficulties ({len(scatter_df.keys())} courses)')
+      title=table_title)
 
 if __name__ == '__main__':
   app.run(main)
