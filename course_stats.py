@@ -22,6 +22,7 @@ import bokeh.plotting
 ## Data and Model Code
 
 default_data_dir = 'Data'
+default_cache_dir = 'Cache'
 
 # https://discourse.pymc.io/t/how-save-pymc-v5-models/13022
 
@@ -342,42 +343,6 @@ def create_result_frame(
   return scatter_df
 
 
-def save_model(filename, model, trace, map_estimate,
-               top_runner_percent, panda_data,
-               course_mapper, runner_mapper,
-               default_dir=default_data_dir):
-  if filename.startswith('/'):
-    full_filename = filename
-  else:
-    full_filename = os.path.join(default_dir, filename)
-
-  dict_to_save = {'model': model,
-                  'trace': trace,
-                  'top_runner_percent': top_runner_percent,
-                  'panda_data': panda_data,
-                  'course_mapper': course_mapper,
-                  'runner_mapper': runner_mapper,
-                  'map_estimate': map_estimate,
-                  }
-
-  with open(full_filename , 'wb') as buff:
-      cloudpickle.dump(dict_to_save, buff)
-
-
-def load_model(filename,
-               default_dir='/content/gdrive/MyDrive/CrossCountry/XCStats/'):
-  if filename.startswith('/'):
-    full_filename = filename
-  else:
-    full_filename = os.path.join(default_dir, filename)
-  with open(full_filename , 'rb') as buff:
-      model_dict = cloudpickle.load(buff)
-  return (model_dict['model'], model_dict['trace'],
-          model_dict['top_runner_percent'], model_dict['panda_data'],
-          model_dict['course_mapper'], model_dict['runner_mapper'],
-          model_dict['map_estimate'])
-
-
 def create_markdown_table(df):
   print('|Index | Course Name                      | Boys Difficulty | '
         'Girls Difficulty | # Boys | # Girls |')
@@ -683,6 +648,8 @@ flags.DEFINE_integer('draws', 1000, 'Number of draws to make when sampling',
                      lower_bound=1)
 flags.DEFINE_string('data_dir', default_data_dir, 
                     'Where to store the program results.')
+flags.DEFINE_string('cache_dir', '', 
+                    'Where to cache the analysis results.')
 
 def main(argv):
   start_time = time.time()
@@ -701,14 +668,38 @@ def main(argv):
       vg_data,
       place_fraction=top_runner_percent/100.0)
 
-  print('\nBuilding boys model')
-  vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
-    vb_select, chains=FLAGS.chains, draws=FLAGS.draws)
+  cache_file = os.path.join(FLAGS.cache_dir, 'vb_analysis.pickle')
+  if FLAGS.cache_dir and os.path.exists(cache_file):
+    print('\nLoading boys model')
+    (vb_xc_model, vb_model_trace, vb_map_estimate,
+     top_runner_percent, vb_data,
+     vb_course_mapper, vb_runner_mapper) = load_model(cache_file)
+  else:
+    print('\nBuilding boys model...')
+    vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
+      vb_select, chains=FLAGS.chains, draws=FLAGS.draws)
+    if FLAGS.cache_dir:
+      save_model(cache_file, 
+                vb_xc_model, vb_model_trace, vb_map_estimate,
+                top_runner_percent, vb_data,
+                vb_course_mapper, vb_runner_mapper)
   print(vb_map_estimate)
 
-  print('\nBuilding girls model')
-  vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
-    vg_select, chains=FLAGS.chains, draws=FLAGS.draws)
+  cache_file = os.path.join(FLAGS.cache_dir, 'vg_analysis.pickle')
+  if FLAGS.cache_dir and os.path.exists(cache_file):
+    print('\nLoading girls model')
+    (vg_xc_model, vg_model_trace, vg_map_estimate,
+     top_runner_percent, vg_data,
+     vg_course_mapper, vg_runner_mapper) = load_model(cache_file)
+  else:
+    print('\nBuilding girls model...')
+    vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
+      vg_select, chains=FLAGS.chains, draws=FLAGS.draws)
+    if FLAGS.cache_dir:
+      save_model(cache_file, 
+                vg_xc_model, vg_model_trace, vg_map_estimate,
+                top_runner_percent, vg_data,
+                vg_course_mapper, vg_runner_mapper)
   print(vg_map_estimate)
 
   # Plot all the (VB) results.
