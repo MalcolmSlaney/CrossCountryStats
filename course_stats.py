@@ -1,6 +1,7 @@
 import datetime
 import os
 import sys
+import time
 
 from absl import app
 from absl import flags
@@ -677,6 +678,7 @@ flags.DEFINE_string('data_dir', default_data_dir,
                     'Where to store the program results.')
 
 def main(argv):
+  start_time = time.time()
   print(f'Have {os.cpu_count()} CPUs available for this job.')
   vb_data = import_xcstats('boys_v2.csv') 
   vg_data = import_xcstats('girls_v2.csv')
@@ -738,8 +740,8 @@ def main(argv):
   scatter_df = create_result_frame(vb_data, vg_data,
                                    vb_course_mapper, vg_course_mapper, 
                                    vb_model_trace, vg_model_trace)
-  local_df = scatter_df.loc[scatter_df['local_course'] == True].copy()
-  table_title = f'Bay Area Course Difficulties ({len(local_df)} courses)'
+  local_df = scatter_df[scatter_df['local_course'] == True].copy()
+  table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
   create_html_table(
     local_df,
     os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
@@ -747,12 +749,12 @@ def main(argv):
 
 
   table_title = ('California Course Difficulties '
-                 f'({len(scatter_df.keys())} courses)')
+                 f'({scatter_df.shape[0]} courses)')
   create_html_table(
       scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
       title=table_title)
   
-  print('All done.')
+  print(f'All done after {(time.time()-start_time)/60.0} minutes.')
 
 if __name__ == '__main__':
   app.run(main)
