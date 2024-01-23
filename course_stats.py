@@ -289,8 +289,10 @@ def create_result_frame(vb_data, vg_data,
     vg_course_est = vg_map_estimate['course_est']
   else:
     # Average the posterior for course_est over all traces and all samples.
-    vb_course_est = np.mean(vb_model_trace.posterior.course_est.values, axis=(0,1))
-    vg_course_est = np.mean(vg_model_trace.posterior.course_est.values, axis=(0,1))
+    vb_course_est = np.mean(vb_model_trace.posterior.course_est.values, 
+                            axis=(0,1))
+    vg_course_est = np.mean(vg_model_trace.posterior.course_est.values, 
+                            axis=(0,1))
 
   common_courses = find_common_courses(vb_course_mapper, vg_course_mapper)
 
@@ -432,12 +434,13 @@ html_footer = """
 # Note, for reasons I don't understand, at least one field in the table headers
 # must be non sortable.  I'm using local for that now.
 
-def create_html_table(df, filename, title=None):
-  global html_header
+def create_html_table(df: pd.DataFrame, filename: str, title: str = None):
   with open(filename, 'w') as f:
     if title:
-      html_header = html_header.replace('California Course Difficulties', title)
-    print(html_header, file=f)
+      my_header = html_header.replace('California Course Difficulties', title)
+    else:
+      my_header = html_header
+    print(my_header, file=f)
     for index, row in df.iterrows():
       print('<tr>', file=f)
       print(f'<td>{row["course_name"]}</td>', 
@@ -449,36 +452,6 @@ def create_html_table(df, filename, title=None):
             f'</tr>', file=f)
     print(html_footer, file=f)
 
-
-def plot_difficulty_comparison(scatter_df):
-  # Drop the data point for Spooner since it's a very long distance.
-  p = bokeh.plotting.figure(title="Varsity Boy/Girl Course Difficulty Comparison",
-                            x_axis_label='Girls MAP Estimate',
-                            y_axis_label='Boys MAP Estimate',
-                            x_range=(0.2, 1.4),  # Skip Spooner
-                            y_range=(0.2, 1.4),  # Skip Spooner
-                            tooltips=[
-                                ("Course Name", "@course_name"),
-                                ("Course Distance", "@course_distances"),
-                                ("Course Difficulty (Boys)", "@vb_difficulty"),
-                                ("Course Difficulty (Girls)", "@vg_difficulty"),
-                                ("Boys Runner Count", "@boys_runner_count"),
-                                ("Girls Runner Count", "@girls_runner_count")
-                                ])
-
-  # Compare the boys and girls course difficulties with a scatter plot
-  far_data = scatter_df.loc[~scatter_df['local_course']]
-  p.cross(source=far_data, x='vg_difficulty', y='vb_difficulty',
-          legend_label="Other Courses",
-          line_color='blue')
-
-  local_data = scatter_df.loc[scatter_df['local_course']]
-  p.circle(source=local_data, x='vg_difficulty', y='vb_difficulty',
-          legend_label="Local Courses",
-          line_color='red', fill_color='red', size=6)
-
-  p.legend.location = 'top_left'
-  return p
 
 # Figure out which courses are common to both boys and girls (for the scatter
 # that follow.)
@@ -650,6 +623,37 @@ def plot_year_month_difficulty_tradeoff(
   if filename:
     plt.savefig(filename)
 
+
+def plot_difficulty_comparison(scatter_df):
+  # Drop the data point for Spooner since it's a very long distance.
+  p = bokeh.plotting.figure(title="Varsity Boy/Girl Course Difficulty Comparison",
+                            x_axis_label='Girls MAP Estimate',
+                            y_axis_label='Boys MAP Estimate',
+                            x_range=(0.2, 1.4),  # Skip Spooner
+                            y_range=(0.2, 1.4),  # Skip Spooner
+                            tooltips=[
+                                ("Course Name", "@course_name"),
+                                ("Course Distance", "@course_distances"),
+                                ("Course Difficulty (Boys)", "@vb_difficulty"),
+                                ("Course Difficulty (Girls)", "@vg_difficulty"),
+                                ("Boys Runner Count", "@boys_runner_count"),
+                                ("Girls Runner Count", "@girls_runner_count")
+                                ])
+
+  # Compare the boys and girls course difficulties with a scatter plot
+  far_data = scatter_df.loc[~scatter_df['local_course']]
+  p.cross(source=far_data, x='vg_difficulty', y='vb_difficulty',
+          legend_label="Other Courses",
+          line_color='blue')
+
+  local_data = scatter_df.loc[scatter_df['local_course']]
+  p.circle(source=local_data, x='vg_difficulty', y='vb_difficulty',
+          legend_label="Local Courses",
+          line_color='red', fill_color='red', size=6)
+
+  p.legend.location = 'top_left'
+  return p
+
 ################## Main Program ########################
 
 FLAGS = flags.FLAGS
@@ -714,9 +718,9 @@ def main(argv):
   
   # Create course difficulty summary tables
   scatter_df = create_result_frame(vb_data, vg_data,
-                                  vb_course_mapper, vg_course_mapper, 
-                                  vb_model_trace, vg_model_trace)
-  local_df = scatter_df.loc[scatter_df['local_course'] == True]
+                                   vb_course_mapper, vg_course_mapper, 
+                                   vb_model_trace, vg_model_trace)
+  local_df = scatter_df.loc[scatter_df['local_course'] == True].copy()
   table_title = ('Bay Area Course Difficulties ({len(local_df)} courses)')
   create_html_table(
     local_df,
