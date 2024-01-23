@@ -543,7 +543,8 @@ def plot_monthly_slope_predictions(
   plt.title(title);
 
   add_line(np.mean(d), 'Trace Mean')
-  plt.legend()
+  if d.shape[0] < 8:
+    plt.legend()
 
   if filename:
     plt.savefig(filename)
@@ -574,7 +575,8 @@ def plot_yearly_slope_predictions(
   plt.title(title);
 
   add_line(np.mean(d), 'Trace Mean')
-  plt.legend()
+  if d.shape[0] < 8:
+    plt.legend()
 
   if filename:
     plt.savefig(filename)
