@@ -333,7 +333,7 @@ def create_result_frame(
     runnerIDs = vg_data.loc[vg_data['course_distance'] == course_name]['runnerID'].values
     girls_runner_count.append(len(runnerIDs))
 
-    local_course.append(base_course_name in local_courses)
+    local_course.append(base_course_name in local_course_list)
 
   if normalize_to_crystal:
     vb_difficulties = np.asarray(vb_difficulties)/vb_norm
