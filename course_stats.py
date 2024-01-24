@@ -678,6 +678,9 @@ def main(_):
     (vb_xc_model, vb_model_trace, vb_map_estimate,
      top_runner_percent, vb_data,
      vb_course_mapper, vb_runner_mapper) = load_model(cache_file, None)
+    print(type(vb_xc_model), type(vb_model_trace), type(vb_map_estimate),
+     type(top_runner_percent), type(vb_data),
+     type(vb_course_mapper), type(vb_runner_mapper))
   else:
     print('\nBuilding boys model...')
     vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
