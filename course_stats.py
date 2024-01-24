@@ -414,7 +414,7 @@ def create_html_table(df: pd.DataFrame, filename: str, title: str = None):
     else:
       my_header = html_header
     print(my_header, file=f)
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
       print('<tr>', file=f)
       print(f'<td>{row["course_name"]}</td>', 
             f'<td>{row["vb_difficulty"]:2.4f}</td>'
@@ -651,7 +651,7 @@ flags.DEFINE_string('data_dir', default_data_dir,
 flags.DEFINE_string('cache_dir', '', 
                     'Where to cache the analysis results.')
 
-def main(argv):
+def main(_):
   start_time = time.time()
   print(f'Have {os.cpu_count()} CPUs available for this job.')
   vb_data = import_xcstats('boys_v2.csv') 
@@ -683,7 +683,7 @@ def main(argv):
                  vb_xc_model, vb_model_trace, vb_map_estimate,
                  top_runner_percent, vb_data,
                  vb_course_mapper, vb_runner_mapper,
-                 default_cache_dir=None)
+                 default_dir=None)
   print(vb_map_estimate)
 
   cache_file = os.path.join(FLAGS.cache_dir, 'vg_analysis.pickle')
@@ -701,7 +701,7 @@ def main(argv):
                  vg_xc_model, vg_model_trace, vg_map_estimate,
                  top_runner_percent, vg_data,
                  vg_course_mapper, vg_runner_mapper,
-                 default_cache_dir=None)
+                 default_dir=None)
   print(vg_map_estimate)
 
   # Plot all the (VB) results.
