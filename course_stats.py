@@ -1,7 +1,9 @@
+"""Compute the parameters of a Bayesian model that predicts school race times.
+"""
 import datetime
 import os
-import sys
 import time
+from typing import Any, Dict, Optional, Tuple, List
 
 from absl import app
 from absl import flags
@@ -10,7 +12,6 @@ import cloudpickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from typing import Any, Dict, Optional, Tuple, List
 
 import pymc as pm
 import arviz as az
@@ -21,15 +22,17 @@ import bokeh.plotting
 
 ## Data and Model Code
 
-default_data_dir = 'Data'
-default_cache_dir = 'Cache'
+DEFAULT_DATA_DIR = 'Data'
+DEFAULT_CACHE_DIR = 'Cache'
 
 # https://discourse.pymc.io/t/how-save-pymc-v5-models/13022
 
+# pylint: disable=too-many-arguments # Do this globally, funtions are complex.
+# pylint: disable=too-many-locals
 def save_model(filename, model, trace, map_estimate,
                top_runner_percent, panda_data,
                course_mapper, runner_mapper,
-               default_dir: Optional[str] = default_cache_dir) -> None:
+               default_dir: Optional[str] = DEFAULT_CACHE_DIR) -> None:
   if filename.startswith('/') or default_dir is None:
     full_filename = filename
   else:
@@ -42,27 +45,27 @@ def save_model(filename, model, trace, map_estimate,
                   'course_mapper': course_mapper,
                   'runner_mapper': runner_mapper,
                   'map_estimate': map_estimate,
-                  'datetime': 
+                  'datetime':
                     datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                   }
 
   with open(full_filename , 'wb') as buff:
-      cloudpickle.dump(dict_to_save, buff)
+    cloudpickle.dump(dict_to_save, buff)
 
 
 def load_model(
     filename,
-    default_dir: Optional[str] = default_cache_dir) -> Tuple[
-      pm.Model, az.InferenceData, Any, pd.DataFrame, Dict, Dict, 
+    default_dir: Optional[str] = DEFAULT_CACHE_DIR) -> Tuple[
+      pm.Model, az.InferenceData, Any, pd.DataFrame, Dict, Dict,
     ]:
   if filename.startswith('/') or default_dir is None:
     full_filename = filename
   else:
     full_filename = os.path.join(default_dir, filename)
   with open(full_filename , 'rb') as buff:
-      model_dict = cloudpickle.load(buff)
-      if datetime in model_dict:
-        print(f'Restoring data stored at {model_dict["datetime"]}')
+    model_dict = cloudpickle.load(buff)
+    if datetime in model_dict:
+      print(f'Restoring data stored at {model_dict["datetime"]}')
   return (model_dict['model'], model_dict['trace'],
           model_dict['top_runner_percent'], model_dict['panda_data'],
           model_dict['course_mapper'], model_dict['runner_mapper'],
@@ -71,7 +74,7 @@ def load_model(
 
 ######################## Synthesize Data ##############################
 
-def generate_xc_data(n: int = 4000,
+def generate_xc_data(n_samples: int = 4000,
                      num_runners: int = 400,
                      num_courses: int = 5,
                      standard_time: float = 18*60, # seconds
@@ -83,33 +86,37 @@ def generate_xc_data(n: int = 4000,
                      use_course: bool = True,
                      use_runner: bool = True,
                      ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
-  race_month = np.random.uniform(0, 4, n)
-  runner_year = np.random.randint(0, 4, n)
+  race_month = np.random.uniform(0, 4, n_samples)
+  runner_year = np.random.randint(0, 4, n_samples)
 
   course_difficulties = np.linspace(0.75, 1.25, num_courses)
-  course_ids = np.random.randint(0, len(course_difficulties), n)
+  course_ids = np.random.randint(0, len(course_difficulties), n_samples)
 
   runner_abilities = np.maximum(0, 1 + np.random.randn(num_runners)/4)
-  runner_ids = np.random.randint(0, num_runners, n)
+  runner_ids = np.random.randint(0, num_runners, n_samples)
 
   # Generate the timing ground truth data
   course_scale = course_difficulties[course_ids]
   runner_scale = runner_abilities[runner_ids]
-  times = np.ones(n, dtype=float)*standard_time
-  if use_year: times -= runner_year*yearly_improvement
-  if use_month: times -= race_month*monthly_improvement
-  if use_course: times *= course_scale
-  if use_runner: times *= runner_scale
-  times += np.random.randn(n)*noise
+  times = np.ones(n_samples, dtype=float)*standard_time
+  if use_year:
+    times -= runner_year*yearly_improvement
+  if use_month:
+    times -= race_month*monthly_improvement
+  if use_course:
+    times *= course_scale
+  if use_runner:
+    times *= runner_scale
+  times += np.random.randn(n_samples)*noise
 
-  df = pd.DataFrame(data={'race_month': race_month,
-                          'runner_year': runner_year,
-                          'course_ids': course_ids,
-                          'runner_ids': runner_ids,
-                          'times': times})
-  return df, course_difficulties, runner_abilities
+  new_df = pd.DataFrame(data={'race_month': race_month,
+                              'runner_year': runner_year,
+                              'course_ids': course_ids,
+                              'runner_ids': runner_ids,
+                              'times': times})
+  return new_df, course_difficulties, runner_abilities
 
-def create_xc_model(data: pd.DataFrame,
+def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
                     use_month: bool = True,
                     use_year: bool = True,
                     use_course: bool = True,
@@ -159,14 +166,12 @@ def create_xc_model(data: pd.DataFrame,
     if use_year:
       time_est -= yearly_slope * data.runner_year.values
     if use_course:
-      time_est *= course_est[data.course_ids.values]
+      time_est *= course_est[data.course_ids.values]  # pylint: disable=unsubscriptable-object
     if use_runner:
-      time_est *= runner_est[data.runner_ids.values]
-    # time_est += eps
+      time_est *= runner_est[data.runner_ids.values]  # pylint: disable=unsubscriptable-object
 
     # Data likelihood
-    y_like = pm.Normal('y_like', mu=time_est, sigma=eps,
-                       observed=data.times.values)
+    pm.Normal('y_like', mu=time_est, sigma=eps, observed=data.times.values)
   return a_model
 
 
@@ -188,7 +193,7 @@ def extract_year(date):
 
 def import_xcstats(
     csv_file: str,
-    default_dir: str = default_data_dir) -> pd.DataFrame:
+    default_dir: str = DEFAULT_DATA_DIR) -> pd.DataFrame:
   """Import the XCStats data into Panda.  Transform the race date into the
   month and year we need for our model.  The month is number of months since
   September, since that's the start of the season (generally 0-3).  The year is
@@ -268,10 +273,10 @@ def prepare_xc_data(data: pd.DataFrame,
   data.loc[:, 'runner_year'] = data['race_year'] - (data['gradYear'] - 4)
   return data, runner_mapper, course_mapper
 
-  
-def build_and_test_model(xc_data: pd.DataFrame, 
-                         chains: int = 2, 
-                         draws: int = 1000, 
+
+def build_and_test_model(xc_data: pd.DataFrame,
+                         chains: int = 2,
+                         draws: int = 1000,
                          tune: int = 1000,  # Shorten for debugging
                          ) -> Tuple[
     pm.Model, dict[str, np.ndarray], az.InferenceData]:
@@ -282,7 +287,7 @@ def build_and_test_model(xc_data: pd.DataFrame,
   map_estimate = pm.find_MAP(model=xc_model)
 
   print(f'Find the MCMC distribution for {xc_data.shape[0]} results....')
-  model_trace = pm.sample(model=xc_model, chains=chains, 
+  model_trace = pm.sample(model=xc_model, chains=chains,
                           draws=draws, tune=tune)
   return xc_model, map_estimate, model_trace
 
@@ -294,10 +299,12 @@ def find_course_name(name, mapper):
 # Gather the data so we can plot a scatter plot showing boy's and girl's
 # course difficuties.
 def create_result_frame(
-    vb_data: pd.DataFrame, vg_data: pd.DataFrame,
-    vb_course_mapper: Dict[Any, int], 
-    vg_course_mapper: Dict[Any, int], 
-    vb_model_trace, vg_model_trace, local_course_list=[],
+    vb_data: pd.DataFrame,
+    vg_data: pd.DataFrame,
+    vb_course_mapper: Dict[Any, int],
+    vg_course_mapper: Dict[Any, int],
+    vb_model_trace, vg_model_trace,
+    local_course_list=(),
     vb_map_estimate=None, vg_map_estimate=None,
     use_map = False, normalize_to_crystal=True):
   if use_map:
@@ -305,9 +312,9 @@ def create_result_frame(
     vg_course_est = vg_map_estimate['course_est']
   else:
     # Average the posterior for course_est over all traces and all samples.
-    vb_course_est = np.mean(vb_model_trace.posterior.course_est.values, 
+    vb_course_est = np.mean(vb_model_trace.posterior.course_est.values,
                             axis=(0,1))
-    vg_course_est = np.mean(vg_model_trace.posterior.course_est.values, 
+    vg_course_est = np.mean(vg_model_trace.posterior.course_est.values,
                             axis=(0,1))
 
   common_courses = find_common_courses(vb_course_mapper, vg_course_mapper)
@@ -328,10 +335,12 @@ def create_result_frame(
       vb_norm = vb_difficulties[-1]
       vg_norm = vg_difficulties[-1]
 
-    runnerIDs = vb_data.loc[vb_data['course_distance'] == course_name]['runnerID'].values
-    boys_runner_count.append(len(runnerIDs))
-    runnerIDs = vg_data.loc[vg_data['course_distance'] == course_name]['runnerID'].values
-    girls_runner_count.append(len(runnerIDs))
+    runner_ids = vb_data.loc[
+      vb_data['course_distance'] == course_name]['runnerID'].values
+    boys_runner_count.append(len(runner_ids))
+    runner_ids = vg_data.loc[
+      vg_data['course_distance'] == course_name]['runnerID'].values
+    girls_runner_count.append(len(runner_ids))
 
     local_course.append(base_course_name in local_course_list)
 
@@ -350,13 +359,13 @@ def create_result_frame(
   return scatter_df
 
 
-def create_markdown_table(df):
+def create_markdown_table(race_data: pd.DataFrame):
   print('|Index | Course Name                      | Boys Difficulty | '
         'Girls Difficulty | # Boys | # Girls |')
   print('|-----:|---------------------------------:|'
         '----------------:|'
         '-----------------:|-------:|--------:|')
-  for index, row in df.iterrows():
+  for index, row in race_data.iterrows():
     print(f'|{index:5d} | {row["course_name"]:32s} | '
           f'{row["vb_difficulty"]:2.3f}           |'
           f'{row["vg_difficulty"]:2.3f}             |'
@@ -364,7 +373,7 @@ def create_markdown_table(df):
           f'{row["girls_runner_count"]:5d}   |')
 
 
-html_header = """
+HTML_HEADER = """
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -403,10 +412,10 @@ html_header = """
                 <tbody>
 """
 
-html_footer = """
+HTML_FOOTER = """
       </table>
     </div>
-    <p>       
+    <p>
   </body>
 </html>
 """
@@ -414,23 +423,25 @@ html_footer = """
 # Note, for reasons I don't understand, at least one field in the table headers
 # must be non sortable.  I'm using local for that now.
 
-def create_html_table(df: pd.DataFrame, filename: str, title: str = None):
-  with open(filename, 'w') as f:
+def create_html_table(race_data: pd.DataFrame,
+                      filename: str,
+                      title: str = None):
+  with open(filename, 'w', encoding="utf-8") as file_pointer:
     if title:
-      my_header = html_header.replace('California Course Difficulties', title)
+      my_header = HTML_HEADER.replace('California Course Difficulties', title)
     else:
-      my_header = html_header
-    print(my_header, file=f)
-    for _, row in df.iterrows():
-      print('<tr>', file=f)
-      print(f'<td>{row["course_name"]}</td>', 
+      my_header = HTML_HEADER
+    print(my_header, file=file_pointer)
+    for _, row in race_data.iterrows():
+      print('<tr>', file=file_pointer)
+      print(f'<td>{row["course_name"]}</td>',
             f'<td>{row["vb_difficulty"]:2.4f}</td>'
             f'<td>{row["vg_difficulty"]:2.4f}</td>'
             f'<td>{row["boys_runner_count"]}</td>'
             f'<td>{row["girls_runner_count"]}</td>'
             f'<td>{row["local_course"]}</td>'
-            f'</tr>', file=f)
-    print(html_footer, file=f)
+            f'</tr>', file=file_pointer)
+    print(HTML_FOOTER, file=file_pointer)
 
 
 # Figure out which courses are common to both boys and girls (for the scatter
@@ -443,26 +454,26 @@ def find_common_courses(vb_course_mapper, vg_course_mapper):
 
 
 # Extract the course names where our local schools run, for easier debugging.
-local_schools = [830, # Palo Alto
+LOCAL_SCHOOLS = (830, # Palo Alto
                  950, # Los Altos
                  1, # Archbishop Mitty
                  10, # Lynbrook
-]
+)
 
-def find_local_courses(pd_data: pd.DataFrame, 
-                       local_schools: List[int] = local_schools):
+def find_local_courses(pd_data: pd.DataFrame,
+                       local_schools: List[int] = LOCAL_SCHOOLS):
   local_courses = pd_data.loc[pd_data['schoolID'].isin(local_schools)]
   return local_courses.courseName.unique()
 
-def get_course_distance(n: str) -> str:
-  pieces = n.rsplit(' ', 1)
+def get_course_distance(name_and_dist: str) -> str:
+  pieces = name_and_dist.rsplit(' ', 1)
   return pieces[0], float(pieces[1][1:-1])
 
 
 ################## Plotting Routines ########################
 
 def plot_map_course_difficulties(
-    map_estimates, 
+    map_estimates,
     title: str = 'Histogram of Course Difficulties (MAP)',
     filename: str = None,
     difficulty_limit: int = 3):
@@ -471,12 +482,12 @@ def plot_map_course_difficulties(
   plt.clf()
   plt.hist(course_data, 20)
   plt.title(title)
-  plt.xlabel('Course Difficulty (arbitrary units)');
+  plt.xlabel('Course Difficulty (arbitrary units)')
   if filename:
     plt.savefig(filename)
 
 
-def plot_map_runner_abilities(map_estimates, 
+def plot_map_runner_abilities(map_estimates,
                               title='Histogram of Runner Abilities (MAP)',
                               filename=None,
                               difficulty_limit=3):
@@ -485,42 +496,42 @@ def plot_map_runner_abilities(map_estimates,
   plt.clf()
   plt.hist(course_data, 20)
   plt.title(title)
-  plt.xlabel('Relative Runner Abilities (arbitrary units)');
+  plt.xlabel('Relative Runner Abilities (arbitrary units)')
   if filename:
     plt.savefig(filename)
 
 
 def line_hist(data, bins=10, **kwargs):
-  y, binEdges = np.histogram(data, bins=bins)
-  bincenters = 0.5 * (binEdges[1:] + binEdges[:-1])
-  plt.plot(bincenters, y, **kwargs)
+  y_locs, bin_edges = np.histogram(data, bins=bins)
+  bincenters = 0.5 * (bin_edges[1:] + bin_edges[:-1])
+  plt.plot(bincenters, y_locs, **kwargs)
 
 
 def plot_monthly_slope_predictions(
-    trace_data: az.InferenceData, 
+    trace_data: az.InferenceData,
     title: str = 'Histogram of Monthly Slope Predictions',
     num_bins: int = 20,
     filename: str = None) -> List[np.ndarray]:
-  
-  def add_line(x, label):
-    a = plt.axis()
-    plt.plot([x, x], a[2:], '--', label=label)
-    plt.text(x, np.mean(a[2:]), f'{x:4.3}')
+
+  def add_line(x_loc, label):
+    axis_limits = plt.axis()
+    plt.plot([x_loc, x_loc], axis_limits[2:], '--', label=label)
+    plt.text(x_loc, np.mean(axis_limits[2:]), f'{x_loc:4.3}')
 
   monthly_trace_means = []
-  d = trace_data.posterior.monthly_slope.values
-  min = np.min(d.flatten())
-  max = np.max(d.flatten())
-  bins = np.linspace(min, max, num_bins+1)
+  slopes = trace_data.posterior.monthly_slope.values
+  min_slope = np.min(slopes.flatten())
+  max_slope = np.max(slopes.flatten())
+  bins = np.linspace(min_slope, max_slope, num_bins+1)
   plt.clf()
-  for i in range(d.shape[0]):
-    monthly_trace_means.append(np.mean(d[i, :]))
-    line_hist(d[i, :], bins=bins, alpha=0.5, label=f'Trace {i}')
-  plt.xlabel('Monthly Improvement During Each Season (s)');
-  plt.title(title);
+  for i in range(slopes.shape[0]):
+    monthly_trace_means.append(np.mean(slopes[i, :]))
+    line_hist(slopes[i, :], bins=bins, alpha=0.5, label=f'Trace {i}')
+  plt.xlabel('Monthly Improvement During Each Season (s)')
+  plt.title(title)
 
-  add_line(np.mean(d), 'Trace Mean')
-  if d.shape[0] < 8:
+  add_line(np.mean(slopes), 'Trace Mean')
+  if slopes.shape[0] < 8:
     plt.legend()
 
   if filename:
@@ -529,30 +540,31 @@ def plot_monthly_slope_predictions(
 
 
 def plot_yearly_slope_predictions(
-    trace_data: az.InferenceData, 
-    title: str = 'Histogram of Yearly Slope Predictions', 
+    trace_data: az.InferenceData,
+    title: str = 'Histogram of Yearly Slope Predictions',
     num_bins: int = 20,
     filename: str = None) -> List[np.ndarray]:
-  
-  def add_line(x, label):
-    a = plt.axis()
-    plt.plot([x, x], a[2:], '--', label=label)
-    plt.text(x, np.mean(a[2:]), f'{x:4.3}')
+
+  def add_line(x_loc, label):
+    axis_limits = plt.axis()
+    plt.plot([x_loc, x_loc], axis_limits[2:], '--', label=label)
+    plt.text(x_loc, np.mean(axis_limits[2:]), f'{x_loc:4.3}')
 
   yearly_trace_means = []
-  d = trace_data.posterior.yearly_slope.values
-  min = np.min(d.flatten())
-  max = np.max(d.flatten())
-  bin_locs = np.linspace(min, max, num_bins+1)
-  plt.clf()
-  for i in range(d.shape[0]):
-    yearly_trace_means.append(np.mean(d[i, :]))
-    line_hist(d[i, :], bins=bin_locs, alpha=0.5, label=f'Trace {i}')
-  plt.xlabel('Yearly Improvement During Each Season (s)');
-  plt.title(title);
 
-  add_line(np.mean(d), 'Trace Mean')
-  if d.shape[0] < 8:
+  slopes = trace_data.posterior.yearly_slope.values
+  min_slope = np.min(slopes.flatten())
+  max_slope = np.max(slopes.flatten())
+  bin_locs = np.linspace(min_slope, max_slope, num_bins+1)
+  plt.clf()
+  for i in range(slopes.shape[0]):
+    yearly_trace_means.append(np.mean(slopes[i, :]))
+    line_hist(slopes[i, :], bins=bin_locs, alpha=0.5, label=f'Trace {i}')
+  plt.xlabel('Yearly Improvement During Each Season (s)')
+  plt.title(title)
+
+  add_line(np.mean(slopes), 'Trace Mean')
+  if slopes.shape[0] < 8:
     plt.legend()
 
   if filename:
@@ -567,19 +579,19 @@ def plot_map_trace_difficulty_comparison(
     difficulty_limit=2.2,  # Drop Spooner since it's way long.
     filename=None) -> List[np.ndarray]:
   # Plot the MAP vs. mean trace estimate of the course difficulties.
-  d = model_trace.posterior.course_est.values
+  course_difficulties = model_trace.posterior.course_est.values
   plt.clf()
   difficulty_trace_slopes = []
-  for i in range(d.shape[0]):
-    trace_difficulties = np.mean(d[i, :, :], axis=0)
+  for i in range(course_difficulties.shape[0]):
+    trace_difficulties = np.mean(course_difficulties[i, :, :], axis=0)
 
     # Estimate the MAP vs. Trace slope
-    x = np.vstack([map_estimate['course_est'],
-                  np.ones(len(map_estimate['course_est']))])
+    x_data = np.vstack([map_estimate['course_est'],
+                        np.ones(len(map_estimate['course_est']))])
     good_data = ~np.isnan(map_estimate['course_est'])
-    m = np.linalg.lstsq(x.T[good_data, :],
-                          trace_difficulties[good_data], rcond=None)[0]
-    difficulty_trace_slopes.append(m[0])
+    line_params = np.linalg.lstsq(x_data.T[good_data, :],
+                                  trace_difficulties[good_data], rcond=None)[0]
+    difficulty_trace_slopes.append(line_params[0])
 
     plt.scatter(map_estimate['course_est'], trace_difficulties,
                 label=f'Trace {i}', alpha=0.1)
@@ -589,11 +601,11 @@ def plot_map_trace_difficulty_comparison(
   plt.xlabel('MAP Estimate')
   plt.ylabel('Mean of Trace')
   plt.legend()
-  plt.title('Comparison of VB\'s Course Difficulties');
+  plt.title(title)
   if filename:
     plt.savefig(filename)
   return difficulty_trace_slopes
-  
+
 
 def plot_year_month_difficulty_tradeoff(
     monthly_trace_means,
@@ -604,13 +616,13 @@ def plot_year_month_difficulty_tradeoff(
   plt.clf()
   plt.plot(monthly_trace_means,
            difficulty_trace_slopes,
-          'x', label='Monthly Slope');
+          'x', label='Monthly Slope')
   plt.plot(yearly_trace_means,
            difficulty_trace_slopes,
           'o', label='Yearly Slope')
   plt.xlabel('Month or Yearly Slope')
   plt.ylabel('Mean slope of Course Difficulty')
-  plt.title('Tradeoff between year/month and course difficulties')
+  plt.title(title)
   plt.legend()
   if filename:
     plt.savefig(filename)
@@ -618,33 +630,33 @@ def plot_year_month_difficulty_tradeoff(
 
 def plot_difficulty_comparison(scatter_df: pd.DataFrame):
   # Drop the data point for Spooner since it's a very long distance.
-  p = bokeh.plotting.figure(title="Varsity Boy/Girl Course Difficulty Comparison",
-                            x_axis_label='Girls MAP Estimate',
-                            y_axis_label='Boys MAP Estimate',
-                            x_range=(0.2, 1.4),  # Skip Spooner
-                            y_range=(0.2, 1.4),  # Skip Spooner
-                            tooltips=[
-                                ("Course Name", "@course_name"),
-                                ("Course Distance", "@course_distances"),
-                                ("Course Difficulty (Boys)", "@vb_difficulty"),
+  my_plot = bokeh.plotting.figure(
+    title="Varsity Boy/Girl Course Difficulty Comparison",
+    x_axis_label='Girls MAP Estimate',
+    y_axis_label='Boys MAP Estimate',
+    x_range=(0.2, 1.4),  # Skip Spooner
+    y_range=(0.2, 1.4),  # Skip Spooner
+    tooltips=[("Course Name", "@course_name"),
+              ("Course Distance", "@course_distances"),
+              ("Course Difficulty (Boys)", "@vb_difficulty"),
                                 ("Course Difficulty (Girls)", "@vg_difficulty"),
-                                ("Boys Runner Count", "@boys_runner_count"),
-                                ("Girls Runner Count", "@girls_runner_count")
-                                ])
+              ("Boys Runner Count", "@boys_runner_count"),
+              ("Girls Runner Count", "@girls_runner_count")
+              ])
 
   # Compare the boys and girls course difficulties with a scatter plot
   far_data = scatter_df.loc[~scatter_df['local_course']]
-  p.cross(source=far_data, x='vg_difficulty', y='vb_difficulty',
-          legend_label="Other Courses",
-          line_color='blue')
+  my_plot.cross(source=far_data, x='vg_difficulty', y='vb_difficulty',
+                legend_label="Other Courses",
+                line_color='blue')
 
   local_data = scatter_df.loc[scatter_df['local_course']]
-  p.circle(source=local_data, x='vg_difficulty', y='vb_difficulty',
-          legend_label="Local Courses",
-          line_color='red', fill_color='red', size=6)
+  my_plot.circle(source=local_data, x='vg_difficulty', y='vb_difficulty',
+                 legend_label="Local Courses",
+                 line_color='red', fill_color='red', size=6)
 
-  p.legend.location = 'top_left'
-  return p
+  my_plot.legend.location = 'top_left'
+  return my_plot
 
 ################## Main Program ########################
 
@@ -653,15 +665,15 @@ flags.DEFINE_integer('chains', 2, 'Number of MCMC chains to explore',
                      lower_bound=1)
 flags.DEFINE_integer('draws', 1000, 'Number of draws to make when sampling',
                      lower_bound=1)
-flags.DEFINE_string('data_dir', default_data_dir, 
+flags.DEFINE_string('data_dir', DEFAULT_DATA_DIR,
                     'Where to store the program results.')
-flags.DEFINE_string('cache_dir', '', 
+flags.DEFINE_string('cache_dir', '',
                     'Where to cache the analysis results.')
 
 def main(_):
   start_time = time.time()
   print(f'Have {os.cpu_count()} CPUs available for this job.')
-  vb_data = import_xcstats('boys_v2.csv') 
+  vb_data = import_xcstats('boys_v2.csv')
   vg_data = import_xcstats('girls_v2.csv')
   print(f'Read in {vb_data.shape[0]} boys and '
         f'{vb_data.shape[0]} girls results')
@@ -678,7 +690,7 @@ def main(_):
   cache_file = os.path.join(FLAGS.cache_dir, 'vb_analysis.pickle')
   if FLAGS.cache_dir and os.path.exists(cache_file):
     print('\nLoading boys model')
-    (vb_xc_model, vb_model_trace, 
+    (vb_xc_model, vb_model_trace,
      top_runner_percent, vb_data,
      vb_course_mapper, vb_runner_mapper,
      vb_map_estimate) = load_model(cache_file, None)
@@ -687,7 +699,7 @@ def main(_):
     vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
       vb_select, chains=FLAGS.chains, draws=FLAGS.draws)
     if FLAGS.cache_dir:
-      save_model(cache_file, 
+      save_model(cache_file,
                  vb_xc_model, vb_model_trace, vb_map_estimate,
                  top_runner_percent, vb_data,
                  vb_course_mapper, vb_runner_mapper,
@@ -697,7 +709,7 @@ def main(_):
   cache_file = os.path.join(FLAGS.cache_dir, 'vg_analysis.pickle')
   if FLAGS.cache_dir and os.path.exists(cache_file):
     print('\nLoading girls model')
-    (vg_xc_model, vg_model_trace, 
+    (vg_xc_model, vg_model_trace,
      top_runner_percent, vg_data,
      vg_course_mapper, vg_runner_mapper,
      vg_map_estimate) = load_model(cache_file, None)
@@ -706,7 +718,7 @@ def main(_):
     vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
       vg_select, chains=FLAGS.chains, draws=FLAGS.draws)
     if FLAGS.cache_dir:
-      save_model(cache_file, 
+      save_model(cache_file,
                  vg_xc_model, vg_model_trace, vg_map_estimate,
                  top_runner_percent, vg_data,
                  vg_course_mapper, vg_runner_mapper,
@@ -715,43 +727,43 @@ def main(_):
 
   # Plot all the (VB) results.
   plot_map_course_difficulties(
-      vb_map_estimate, 
+      vb_map_estimate,
       title = 'Histogram of VB Course Difficulties (MAP)',
-      filename = os.path.join(default_data_dir, 
+      filename = os.path.join(DEFAULT_DATA_DIR,
                               'vb_map_course_difficulties.png'))
 
   vb_monthly_trace_means = plot_monthly_slope_predictions(
       vb_model_trace,
       title='Histogram of VB Monthly Slope Predictions',
-      filename=os.path.join(default_data_dir, 'vb_monthly_slope.png'))
-  
+      filename=os.path.join(DEFAULT_DATA_DIR, 'vb_monthly_slope.png'))
+
   vb_yearly_trace_means = plot_yearly_slope_predictions(
       vb_model_trace,
       title='Histogram of VB Yearly Slope Predictions',
-      filename=os.path.join(default_data_dir, 'vb_yearly_slope.png'))
-  
+      filename=os.path.join(DEFAULT_DATA_DIR, 'vb_yearly_slope.png'))
+
   vb_difficulty_trace_slopes = plot_map_trace_difficulty_comparison(
       vb_map_estimate,
       vb_model_trace,
       title='Comparison of VB Course Difficulty Estimates',
-      filename=os.path.join(default_data_dir, 
+      filename=os.path.join(DEFAULT_DATA_DIR,
                             'vb_course_difficulty_comparison.png'))
-  
+
   plot_year_month_difficulty_tradeoff(
       vb_monthly_trace_means,
       vb_yearly_trace_means,
       vb_difficulty_trace_slopes,
       title='Tradeoff between VB year/month and course difficulties',
-      filename=os.path.join(default_data_dir, 
+      filename=os.path.join(DEFAULT_DATA_DIR,
                             'vb_year_month_course_tradeoff.png'))
-  
+
   # Create course difficulty summary tables
   local_course_list = find_local_courses(vb_data)
   scatter_df = create_result_frame(vb_data, vg_data,
-                                   vb_course_mapper, vg_course_mapper, 
+                                   vb_course_mapper, vg_course_mapper,
                                    vb_model_trace, vg_model_trace,
                                    local_course_list)
-  local_df = scatter_df[scatter_df['local_course'] == True].copy()
+  local_df = scatter_df[scatter_df['local_course']].copy()
   print('local_df:', local_df)
   table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
   create_html_table(
@@ -765,7 +777,7 @@ def main(_):
   create_html_table(
       scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
       title=table_title)
-  
+
   print(f'All done after {(time.time()-start_time)/60.0} minutes.')
 
 if __name__ == '__main__':

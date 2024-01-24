@@ -3,7 +3,8 @@ This code estimates the difficulty of cross country (XC) courses.
 The goal is to provide a single number that models each course's difficulty 
 and can be used to adjust expected race times across courses.
 For example, course A might be 1.1 times harder than course B,
-and thus the expected times for course A will be 10% higher.
+and thus the expected times for course A will be 10% higher.  
+The final results are here: All California, Bay Area local.
 
 Using race results from [XCStats](https://xcstats.com/)
 over multiple years,
