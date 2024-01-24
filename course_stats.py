@@ -42,6 +42,8 @@ def save_model(filename, model, trace, map_estimate,
                   'course_mapper': course_mapper,
                   'runner_mapper': runner_mapper,
                   'map_estimate': map_estimate,
+                  'datetime': 
+                    datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                   }
 
   with open(full_filename , 'wb') as buff:
@@ -56,6 +58,8 @@ def load_model(filename,
     full_filename = os.path.join(default_dir, filename)
   with open(full_filename , 'rb') as buff:
       model_dict = cloudpickle.load(buff)
+      if datetime in model_dict:
+        print(f'Restoring data stored at {model_dict["datetime"]}')
   return (model_dict['model'], model_dict['trace'],
           model_dict['top_runner_percent'], model_dict['panda_data'],
           model_dict['course_mapper'], model_dict['runner_mapper'],
