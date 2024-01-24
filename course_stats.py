@@ -50,8 +50,11 @@ def save_model(filename, model, trace, map_estimate,
       cloudpickle.dump(dict_to_save, buff)
 
 
-def load_model(filename,
-               default_dir: Optional[str] = default_cache_dir):
+def load_model(
+    filename,
+    default_dir: Optional[str] = default_cache_dir) -> Tuple[
+      pm.Model, az.InferenceData, Any, pd.DataFrame, Dict, Dict, 
+    ]:
   if filename.startswith('/') or default_dir is None:
     full_filename = filename
   else:
@@ -675,9 +678,10 @@ def main(_):
   cache_file = os.path.join(FLAGS.cache_dir, 'vb_analysis.pickle')
   if FLAGS.cache_dir and os.path.exists(cache_file):
     print('\nLoading boys model')
-    (vb_xc_model, vb_model_trace, vb_map_estimate,
+    (vb_xc_model, vb_model_trace, 
      top_runner_percent, vb_data,
-     vb_course_mapper, vb_runner_mapper) = load_model(cache_file, None)
+     vb_course_mapper, vb_runner_mapper,
+     vb_map_estimate) = load_model(cache_file, None)
     print(type(vb_xc_model), type(vb_model_trace), type(vb_map_estimate),
      type(top_runner_percent), type(vb_data),
      type(vb_course_mapper), type(vb_runner_mapper))
@@ -696,9 +700,10 @@ def main(_):
   cache_file = os.path.join(FLAGS.cache_dir, 'vg_analysis.pickle')
   if FLAGS.cache_dir and os.path.exists(cache_file):
     print('\nLoading girls model')
-    (vg_xc_model, vg_model_trace, vg_map_estimate,
+    (vg_xc_model, vg_model_trace, 
      top_runner_percent, vg_data,
-     vg_course_mapper, vg_runner_mapper) = load_model(cache_file, None)
+     vg_course_mapper, vg_runner_mapper,
+     vg_map_estimate) = load_model(cache_file, None)
   else:
     print('\nBuilding girls model...')
     vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
