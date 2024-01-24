@@ -682,9 +682,6 @@ def main(_):
      top_runner_percent, vb_data,
      vb_course_mapper, vb_runner_mapper,
      vb_map_estimate) = load_model(cache_file, None)
-    print(type(vb_xc_model), type(vb_model_trace), type(vb_map_estimate),
-     type(top_runner_percent), type(vb_data),
-     type(vb_course_mapper), type(vb_runner_mapper))
   else:
     print('\nBuilding boys model...')
     vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
@@ -753,6 +750,7 @@ def main(_):
                                    vb_course_mapper, vg_course_mapper, 
                                    vb_model_trace, vg_model_trace)
   local_df = scatter_df[scatter_df['local_course'] == True].copy()
+  print('local_df:', local_df)
   table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
   create_html_table(
     local_df,
