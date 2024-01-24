@@ -297,7 +297,7 @@ def create_result_frame(
     vb_data: pd.DataFrame, vg_data: pd.DataFrame,
     vb_course_mapper: Dict[Any, int], 
     vg_course_mapper: Dict[Any, int], 
-    vb_model_trace, vg_model_trace, local_courses=[],
+    vb_model_trace, vg_model_trace, local_course_list=[],
     vb_map_estimate=None, vg_map_estimate=None,
     use_map = False, normalize_to_crystal=True):
   if use_map:
@@ -746,9 +746,11 @@ def main(_):
                             'vb_year_month_course_tradeoff.png'))
   
   # Create course difficulty summary tables
+  local_course_list = find_local_courses(vb_data)
   scatter_df = create_result_frame(vb_data, vg_data,
                                    vb_course_mapper, vg_course_mapper, 
-                                   vb_model_trace, vg_model_trace)
+                                   vb_model_trace, vg_model_trace,
+                                   local_course_list)
   local_df = scatter_df[scatter_df['local_course'] == True].copy()
   print('local_df:', local_df)
   table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
