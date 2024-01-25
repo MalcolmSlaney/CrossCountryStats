@@ -224,4 +224,4 @@ Crystal Springs time, and thus this factor doesn't apply.
 
 You can see all these difficulty factors in the interactive comparison 
 viewer that is linked here.  You can zoom and move around to explore the data.
-[Course Difficulty Comparison Viewer](https://htmlpreview.github.io/?https://github.com/MalcolmSlaney/CrossCountryStats/Results/varsity_difficulties_comparison.html)
+[Course Difficulty Comparison Viewer](https://htmlpreview.github.io/?https://github.com/MalcolmSlaney/CrossCountryStats/Results/vb_difficulties_comparison.html)
