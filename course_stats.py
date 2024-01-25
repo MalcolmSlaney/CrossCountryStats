@@ -406,7 +406,9 @@ HTML_HEADER = """
                         <th class="num">
 							            <button># Girls<span aria-hidden="true"></span></button>
 						            </th>
-                        <th>Local</th>
+                        <th>
+							            <button>local<span aria-hidden="true"></span></button>
+						            </th>
                     </tr>
                 </thead>
                 <tbody>
