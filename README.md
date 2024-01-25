@@ -1,10 +1,23 @@
 ## Introduction
-This code estimates the difficulty of cross country (XC) courses. 
+This code estimates the difficulty of California cross country (XC) courses. 
 The goal is to provide a single number that models each course's difficulty 
 and can be used to adjust expected race times across courses.
 For example, course A might be 1.1 times harder than course B,
-and thus the expected times for course A will be 10% higher.  
-The final results are here: All California, Bay Area local.
+and thus the expected times for course A will be 10% higher.
+The final results are here: 
+
+  * [Course difficulties for all California](https://htmlpreview.github.io/?https://github.com/MalcolmSlaney/CrossCountryStats/blob/main/Results/varsity_difficulties_comparison.html), 
+  * [Course difficulties local to the Bay Area Peninsula](https://htmlpreview.github.io/?https://github.com/MalcolmSlaney/CrossCountryStats/blob/main/Results/varsity_difficulties_comparison_local.html).
+
+These results are normalized to times from Crystal Springs, which therefore
+has a difficulty of 1.0. 
+Given a runner's time at Crystal, 
+you can predict their time at another course by 
+multiplying by that course's difficulty factor (i.e. 1.2).
+If you have their time at another course you first *divide their time by 
+that course's difficulty factor, 
+thus giving you an estimate of their Crystal time, 
+then *muliply* by the difficulty of the course that you care about.
 
 Using race results from [XCStats](https://xcstats.com/)
 over multiple years,
@@ -12,8 +25,8 @@ this code builds a model that takes into account these different factors:
 
   * Course difficulty
   * Runner's inate ability
-  * Runner's month-to-month improvement over the season
-  * Runner's year-to-year improvement over their career
+  * Average runner's month-to-month improvement over the season
+  * Average runner's year-to-year improvement over their career
 
 The model estimates a single number (ability or difficulty) for 
 each runner and each course.
@@ -96,40 +109,40 @@ in our dataset. Here are the results for a number of courses run by local
 high school teams (Palo Alto, Los Altos, Archbishop Mitty, and Lynbrook):
 
 |Index | Course Name                      | Boys Difficulty | Girls Difficulty | # Boys | # Girls |
-|-----:|---------------------------------:|:---------------:|:----------------:|-------:|--------:|
-|  248 | RL Stevenson HS (1.6)            | 0.5259          |0.5103            |   82   |    73   |
-|  150 | Woodward Park (2.0)              | 0.6465          |0.6425            |   53   |    51   |
-|    7 | Lynbrook HS (2.1)                | 0.6503          |0.6437            |  330   |   336   |
-|  125 | Fremont HS (2.05)                | 0.6514          |0.6437            |   23   |    23   |
-|  392 | Hidden Valley Park (2.0)         | 0.6592          |0.6616            |  624   |   624   |
-|  218 | Bol Park (2.18)                  | 0.6761          |0.6683            |  131   |   104   |
-|  198 | Prospect HS (2.15)               | 0.6832          |0.6826            |   19   |    20   |
-|   63 | Lagoon Valley Park (2.0)         | 0.6977          |0.7020            |  100   |    79   |
-|    0 | North Monterey County HS (2.4)   | 0.7291          |0.7195            |   14   |    13   |
-|  146 | Central Park (2.3)               | 0.7404          |0.7402            |  271   |   265   |
-|  377 | Westmoor HS (2.33)               | 0.7412          |0.7407            |  109   |    83   |
-|   61 | Westmoor HS '18 (2.4)            | 0.7805          |0.7582            |   91   |    50   |
-|  256 | Westmoor HS (2.4)                | 0.7824          |0.7798            |  243   |   190   |
-|  222 | Golden Gate Park (2.82)          | 0.9127          |0.9038            |  212   |   174   |
-|  365 | Golden Gate Park (2.93)          | 0.9476          |0.9446            |  761   |   635   |
-|  220 | Newhall Park (2.95)              | 0.9608          |0.9524            |  139   |   115   |
-|  117 | North Monterey County HS (3.0)   | 0.9629          |0.9649            |   54   |    58   |
-|  319 | GGP - WCAL pre 2022 (3.0)        | 0.9839          |0.9814            |  156   |   135   |
-|  153 | Kualoa Ranch (3.0)               | 0.9919          |0.9787            |   68   |    69   |
-|  174 | Haggin Oaks Golf Course (3.1)    | 0.9929          |0.9847            |  758   |   683   |
-|   11 | Stanford Golf Course (3.1)       | 0.9932          |0.9882            | 1310   |  1106   |
-|  371 | Elkhorn Country Club (3.1)       | 0.9962          |0.9865            |  773   |   674   |
-|  298 | Kualoa Ranch (3.1)               | 0.9963          |0.9794            |   29   |    24   |
-|  178 | Newhall Park (3.0)               | 0.9970          |0.9907            |  877   |   787   |
-|  304 | Crystal Springs (2.95)           | 1.0000          |1.0000            | 2728   |  2552   |
-|  188 | Mt. Sac (2.93)                   | 1.0008          |1.0051            | 3407   |  3080   |
-|   88 | Woodward Park (3.1)              | 1.0122          |1.0064            | 5473   |  5264   |
-|  193 | Lagoon Valley Park (3.0)         | 1.0170          |1.0148            |  508   |   403   |
-|  109 | Hidden Valley Park (3.0)         | 1.0179          |1.0122            |  362   |   313   |
-|   85 | Baylands Park (3.1)              | 1.0188          |1.0160            |  685   |   684   |
-|  192 | Toro Park (3.0)                  | 1.0236          |1.0238            |  704   |   665   |
-|  312 | Glendoveer Golf Course, OR (3.1) | 1.0504          |1.0397            |   54   |    58   |
-|   70 | Mt. Sac (3.1)                    | 1.0524          |1.0153            |   21   |    10   |
+|-----:|---------------------------------:|----------------:|-----------------:|-------:|--------:|
+|  365 | RL Stevenson HS (1.6)            | 0.523           |0.510             |   82   |    73   |
+|   43 | Woodward Park (2.0)              | 0.646           |0.645             |   53   |    51   |
+|   20 | Lynbrook HS (2.1)                | 0.650           |0.643             |  330   |   336   |
+|  311 | Fremont HS (2.05)                | 0.650           |0.646             |   23   |    23   |
+|   81 | Hidden Valley Park (2.0)         | 0.659           |0.661             |  624   |   624   |
+|  255 | Bol Park (2.18)                  | 0.678           |0.667             |  131   |   104   |
+|  203 | Prospect HS (2.15)               | 0.681           |0.687             |   19   |    20   |
+|  273 | Lagoon Valley Park (2.0)         | 0.698           |0.702             |  100   |    79   |
+|  333 | North Monterey County HS (2.4)   | 0.727           |0.721             |   14   |    13   |
+|  182 | Westmoor HS (2.33)               | 0.740           |0.741             |  109   |    83   |
+|  339 | Central Park (2.3)               | 0.741           |0.740             |  271   |   265   |
+|   76 | Westmoor HS '18 (2.4)            | 0.782           |0.759             |   91   |    50   |
+|  271 | Westmoor HS (2.4)                | 0.782           |0.779             |  243   |   190   |
+|  220 | Golden Gate Park (2.82)          | 0.913           |0.903             |  212   |   174   |
+|  217 | Golden Gate Park (2.93)          | 0.947           |0.944             |  761   |   635   |
+|  276 | Newhall Park (2.95)              | 0.961           |0.953             |  139   |   115   |
+|  117 | North Monterey County HS (3.0)   | 0.964           |0.964             |   54   |    58   |
+|  231 | GGP - WCAL pre 2022 (3.0)        | 0.984           |0.980             |  156   |   135   |
+|  247 | Kualoa Ranch (3.0)               | 0.992           |0.979             |   68   |    69   |
+|   17 | Haggin Oaks Golf Course (3.1)    | 0.993           |0.984             |  758   |   683   |
+|  305 | Stanford Golf Course (3.1)       | 0.993           |0.988             | 1310   |  1106   |
+|  248 | Kualoa Ranch (3.1)               | 0.995           |0.976             |   29   |    24   |
+|   49 | Elkhorn Country Club (3.1)       | 0.996           |0.986             |  773   |   674   |
+|  332 | Newhall Park (3.0)               | 0.997           |0.991             |  877   |   787   |
+|  155 | Crystal Springs (2.95)           | 1.000           |1.000             | 2728   |  2552   |
+|  253 | Mt. Sac (2.93)                   | 1.001           |1.005             | 3407   |  3080   |
+|  126 | Woodward Park (3.1)              | 1.012           |1.006             | 5473   |  5264   |
+|  224 | Lagoon Valley Park (3.0)         | 1.017           |1.015             |  508   |   403   |
+|    8 | Hidden Valley Park (3.0)         | 1.018           |1.013             |  362   |   313   |
+|  272 | Baylands Park (3.1)              | 1.019           |1.016             |  685   |   684   |
+|  396 | Toro Park (3.0)                  | 1.023           |1.023             |  704   |   665   |
+|  123 | Glendoveer Golf Course, OR (3.1) | 1.052           |1.041             |   54   |    58   |
+|  179 | Mt. Sac (3.1)                    | 1.053           |1.017             |   21   |    10   |
 
 Our model has three point variables 
 (average_race_time, monthly_slope, yearly_slope) and two vector variables
@@ -141,8 +154,18 @@ This model predicts the following improvements:
 
 | | Monthly Improvement | Yearly Improvement |
 |----:|:----:|:---:|
-| Boys | 5.8s | 8.51s |
-| Girls | 8.37s | 4.87s |
+| Boys | 10.3s | 15.1s |
+| Girls | 16.1s | 9.4s |
+
+[I don't know why the slopes are so different between boys and girls.  Perhaps
+a function of the girl's earlier maturity?]
+
+The distribution of course difficulties is shown in the next figure below.
+Most courses are about 3 miles long, and they form the bulk of the difficulties
+around 1.0. But some are much shorter (2 miles is common) and one, not shown,
+is much longer.
+
+![Course Difficulty Distribution](Results/vb_map_course_difficulties.png)
 
 ### Ill Posed
 This model is [ill-posed](https://en.wiktionary.org/wiki/ill-posed)
@@ -164,10 +187,11 @@ probability distribution for that model parameter. Most importantly, since
 the trace is random, some traces might assume a lower value of A, and thus 
 high values of B or C, all to explain the same observed data.
 
-The randomness of each trace makes it harder to draw conclusions. For the 
-results presented here, we computed 8 traces, with 2000 samples of each 
-model parameter (this took about 5 hours for each gender's data).
-The final course difficulty numbers are based on averaging all 16000 trace
+The randomness of each trace makes it a litte harder to draw conclusions. 
+For the results presented here, we computed 20 traces, 
+with 1000 samples of each model parameter
+(this took about 3 hours for each gender's data).
+The final course difficulty numbers are based on averaging all 20000 trace
 samples for each course, and then dividing by the average difficulty of the 
 Crystal Springs course, our baseline course.
 
@@ -183,31 +207,21 @@ We can do the same plot for the improvement of the varsity boys year over year.
 
 The next figures shows the tradeoff between course difficulties and slopes.
 
-![Slopes vs. Course Difficulty Tradeoff](Results/vb_year-month_course_tradeoff.png)
+![Slopes vs. Course Difficulty Tradeoff](Results/vb_year_month_course_tradeoff.png)
 
-For traces where the slopes are low, the course difficulties are relatively high.
-Conversely, where the slopes are high, the course difficulties are lower.
-For the slopes in the table above we took the average value over all 8 traces.
+First consider the blue x's.  When the monthly slope is high 
+(the group of blue points to the right) the
+corresponding course difficulty is relatively low (to the bottom).
+Conversely, where the slopes are low (the blue group on the left), 
+the course difficulties are higher (upper left.) This suggests that the model
+balances low (or high) slopes with high (or low) difficulties.  Likewise we
+see the same behavior for the yearly slopes.
+
+For the slopes in the table above we took the average value over all traces.
 For the course difficulties, which is the primary purpose of this model, we
 report the result after normalizing each trace's results to the 
-Crystal Springs time.
+Crystal Springs time, and thus this factor doesn't apply.
 
-## Old Results
-I don't trust the results that follow since they are based on the MAP estimates.
-This StackOverflow question alludes to the difficulty:
-https://discourse.pymc.io/t/how-to-reference-posterior-mode-value-without-find-map/3632
-
-
-![Varsity Boys Abilities (AU)](Results/vb_runner_abilities.png)
-
-![Varsity Boys Course Difficulties (A. U.)](Results/vb_course_difficulty_comparison.png)
-
-![Varsity Girls Course Difficulties (A. U.)](Results/vg_course_difficulty_comparison.png)
-
-![Varsity Boys Stanford Course Difficultes (A. U.)](Results/vb_stanford_course_difficulty_histogram.png)
-
-
-Interactive course difficulty renderer.  
-[Use the buttons on the side to zoom and pan around the image.]
-
-[Course Difficulty Comparison Viewer - probably have to download to render](Results/varsity_difficulties_comparison.html)
+You can see all these difficulty factors in the interactive comparison 
+viewer that is linked here.  You can zoom and move around to explore the data.
+[Course Difficulty Comparison Viewer](https://htmlpreview.github.io/?https://github.com/MalcolmSlaney/CrossCountryStats/Results/varsity_difficulties_comparison.html)

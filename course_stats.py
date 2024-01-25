@@ -763,14 +763,14 @@ def main(_):
                                    vb_course_mapper, vg_course_mapper,
                                    vb_model_trace, vg_model_trace,
                                    local_course_list)
-  local_df = scatter_df[scatter_df['local_course']].copy()
-  print('local_df:', local_df)
+  local_df = scatter_df[scatter_df['local_course']].sort_values('vb_difficulty')
   table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
   create_html_table(
     local_df,
     os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
     title=table_title)
 
+  create_markdown_table(local_df)
 
   table_title = ('California Course Difficulties '
                  f'({scatter_df.shape[0]} courses)')
