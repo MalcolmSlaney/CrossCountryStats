@@ -511,7 +511,7 @@ def plot_monthly_slope_predictions(
     trace_data: az.InferenceData,
     title: str = 'Histogram of Monthly Slope Predictions',
     num_bins: int = 20,
-    filename: str = None) -> List[np.ndarray]:
+    filename: Optional[str] = None) -> List[np.ndarray]:
 
   def add_line(x_loc, label):
     axis_limits = plt.axis()
@@ -543,7 +543,7 @@ def plot_yearly_slope_predictions(
     trace_data: az.InferenceData,
     title: str = 'Histogram of Yearly Slope Predictions',
     num_bins: int = 20,
-    filename: str = None) -> List[np.ndarray]:
+    filename: Optional[str] = None) -> List[np.ndarray]:
 
   def add_line(x_loc, label):
     axis_limits = plt.axis()
@@ -575,9 +575,9 @@ def plot_yearly_slope_predictions(
 def plot_map_trace_difficulty_comparison(
     map_estimate,
     model_trace: az.InferenceData,
-    title='Comparison of Course Difficult Estimates',
-    difficulty_limit=2.2,  # Drop Spooner since it's way long.
-    filename=None) -> List[np.ndarray]:
+    title: str = 'Comparison of Course Difficult Estimates',
+    difficulty_limit:float = 2.2,  # Drop Spooner since it's way long.
+    filename: Optional[str] = None) -> List[np.ndarray]:
   # Plot the MAP vs. mean trace estimate of the course difficulties.
   course_difficulties = model_trace.posterior.course_est.values
   plt.clf()
@@ -612,7 +612,7 @@ def plot_year_month_difficulty_tradeoff(
     yearly_trace_means,
     difficulty_trace_slopes,
     title='Tradeoff between year/month and course difficulties',
-    filename=None):
+    filename: Optional[str] = None):
   plt.clf()
   plt.plot(monthly_trace_means,
            difficulty_trace_slopes,
@@ -628,8 +628,12 @@ def plot_year_month_difficulty_tradeoff(
     plt.savefig(filename)
 
 
-def plot_difficulty_comparison(scatter_df: pd.DataFrame):
+def plot_difficulty_comparison(scatter_df: pd.DataFrame, 
+                               filename: Optional[str] = None):
   # Drop the data point for Spooner since it's a very long distance.
+  if filename:
+    bokeh.plotting.output_file(filename=filename, 
+                               title='Difficulty Scatter Plot')
   my_plot = bokeh.plotting.figure(
     title="Varsity Boy/Girl Course Difficulty Comparison",
     x_axis_label='Girls MAP Estimate',
@@ -656,6 +660,9 @@ def plot_difficulty_comparison(scatter_df: pd.DataFrame):
                  line_color='red', fill_color='red', size=6)
 
   my_plot.legend.location = 'top_left'
+  if filename:
+    bokeh.plotting.save()
+
   return my_plot
 
 ################## Main Program ########################
@@ -757,12 +764,15 @@ def main(_):
       filename=os.path.join(DEFAULT_DATA_DIR,
                             'vb_year_month_course_tradeoff.png'))
 
+  plot_difficulty_comparison(scatter_df)
+
   # Create course difficulty summary tables
   local_course_list = find_local_courses(vb_data)
   scatter_df = create_result_frame(vb_data, vg_data,
                                    vb_course_mapper, vg_course_mapper,
                                    vb_model_trace, vg_model_trace,
                                    local_course_list)
+
   local_df = scatter_df[scatter_df['local_course']].sort_values('vb_difficulty')
   table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
   create_html_table(
@@ -777,6 +787,10 @@ def main(_):
   create_html_table(
       scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
       title=table_title)
+
+  filename=os.path.join(DEFAULT_DATA_DIR,
+                        'vb_difficulties_comparison.html')
+  plot_difficulty_comparison(scatter_df, filename)
 
   print(f'All done after {(time.time()-start_time)/60.0} minutes.')
 

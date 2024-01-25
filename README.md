@@ -6,8 +6,8 @@ For example, course A might be 1.1 times harder than course B,
 and thus the expected times for course A will be 10% higher.
 The final results are here: 
 
-  * [Course difficulties for all California](https://htmlpreview.github.io/?https://github.com/MalcolmSlaney/CrossCountryStats/blob/main/Results/varsity_difficulties_comparison.html), 
-  * [Course difficulties local to the Bay Area Peninsula](https://htmlpreview.github.io/?https://github.com/MalcolmSlaney/CrossCountryStats/blob/main/Results/varsity_difficulties_comparison_local.html).
+  * [Course difficulties for all California](https://htmlpreview.github.io/?https://github.com/MalcolmSlaney/CrossCountryStats/blob/main/Results/course_difficulties.html), 
+  * [Course difficulties local to the Bay Area Peninsula](https://htmlpreview.github.io/?https://github.com/MalcolmSlaney/CrossCountryStats/blob/main/Results/course_difficulties_local.html).
 
 These results are normalized to times from Crystal Springs, which therefore
 has a difficulty of 1.0. 
