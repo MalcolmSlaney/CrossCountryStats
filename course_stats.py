@@ -386,7 +386,7 @@ HTML_HEADER = """
         <div class="table-wrap">
             <table class="sortable">
                 <caption>
-                    Course difficulities by Bayesian Modeling
+                    <b>Course difficulities by Bayesian Modeling (Click on column hearing to sort)</b>
                     <span class="sr-only">, column headers with buttons are sortable.</span>
                 </caption>
                 <thead>
