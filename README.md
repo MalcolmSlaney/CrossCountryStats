@@ -4,7 +4,8 @@ The goal is to provide a single number that models each course's difficulty
 and can be used to adjust expected race times across courses.
 For example, course A might be 1.1 times harder than course B,
 and thus the expected times for course A will be 10% higher.
-The final results are here: 
+The final results are here. You can click on a column header to sort the
+table by that column.
 
   * [Course difficulties for all California](https://www.slaney.org/malcolm/tmp/CrossCountryResults/course_difficulties.html), 
   * [Course difficulties local to the Bay Area Peninsula](https://www.slaney.org/malcolm/tmp/CrossCountryResults/course_difficulties_local.html).
@@ -14,7 +15,9 @@ has a difficulty of 1.0.
 Given a runner's time at Crystal, 
 you can predict their time at another course by 
 multiplying by that course's difficulty factor (i.e. 1.2).
-If you have their time at another course you first *divide their time by 
+In other words, a difficulty factor of 1.2 means that on average a runner's
+time will be 20% longer then their time at Crystal.
+If you have their time at another course you first *divide* their time by 
 that course's difficulty factor, 
 thus giving you an estimate of their Crystal time, 
 then *muliply* by the difficulty of the course that you care about.
@@ -55,25 +58,17 @@ expected times, but in different fashions.  So higher (>1) course difficulties
 represent *harder* courses.  While lower (<1) runner abilities represent *faster*
 runners. In both cases, higher numbers translate to longer finish times.
 
-Note, the raw outputs from this model are unnormalized and should be considered
-*relative* results. 
-While both the ability and difficulty numbers tend to be close to 1, 
-their baselines are arbitrary.
-Thus an average course_difficulty of 0.5 and an average runner ability of 2 will
-produce the same overall race-time predictions as the reverse.  This is 
-explained below in the section on traces.
-
 ## [Bayesian Modeling](https://www.publichealth.columbia.edu/news/what-bayesian-modeling#:~:text=Bayesian%20modeling%20is%20able%20to,estimated%20toxicities%20of%20certain%20pollutants.)
-We use a Bayesian framework to fit a probabilistic model to explain
+We use a Bayesian framework to derive a probabilistic model to explain
 the observed data (runner's race times).
-In a Bayesian model all the parameters of the model are considered random
+In a Bayesian model all the parameters of the model are random
 variables. We don't know Kent's true ability, so it is a random variable. 
 Likewise, the difficulty of Crystal changes with the weather and other variables
 we do not have control over. Our goal is to find probability distributions that
 are as narrow as possible to explain the observed data.
 
 By way of contrast, a deterministic model such as linear regression finds the
-model parameters that produce the smallest possible error
+model parameters that produce the smallest possible total error
 (in the mean-squared sense)
 when predicting the observed times.
 Instead, here we use a Bayesian model so we can model and 
@@ -168,7 +163,14 @@ is much longer.
 ![Course Difficulty Distribution](Results/vb_map_course_difficulties.png)
 
 ### Ill Posed
-This model is [ill-posed](https://en.wiktionary.org/wiki/ill-posed)
+Note, the *raw* outputs from this model are unnormalized and should be considered
+*relative* results. 
+While both the ability and difficulty numbers tend to be close to 1, 
+their baselines are arbitrary.
+Thus an average course_difficulty of 0.5 and an average runner ability of 2 will
+produce the same overall race-time predictions as the reverse.
+
+Thus this model is [ill-posed](https://en.wiktionary.org/wiki/ill-posed)
 and this affects our analysis. 
 We have a multiplicative model and in effect we are multiplying A x B x C to predict D.
 While we have constraints on the expected values of A, B, and C (via a prior
