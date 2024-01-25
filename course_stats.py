@@ -787,7 +787,7 @@ def main(_):
       title=table_title)
 
   filename=os.path.join(DEFAULT_DATA_DIR,
-                        'vb_difficulties_comparison.html')
+                        'vb_vg_difficulties_comparison.html')
   plot_difficulty_comparison(scatter_df, filename)
 
   print(f'All done after {(time.time()-start_time)/60.0} minutes.')
