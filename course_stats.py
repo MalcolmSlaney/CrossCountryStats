@@ -406,7 +406,9 @@ HTML_HEADER = """
                         <th class="num">
 							            <button># Girls<span aria-hidden="true"></span></button>
 						            </th>
-                        <th>Local</th>
+                        <th>
+							            <button>local<span aria-hidden="true"></span></button>
+						            </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -416,6 +418,7 @@ HTML_FOOTER = """
       </table>
     </div>
     <p>
+    <style>table.sortable th button { position: relative; }</style>
   </body>
 </html>
 """
@@ -435,10 +438,10 @@ def create_html_table(race_data: pd.DataFrame,
     for _, row in race_data.iterrows():
       print('<tr>', file=file_pointer)
       print(f'<td>{row["course_name"]}</td>',
-            f'<td>{row["vb_difficulty"]:2.4f}</td>'
-            f'<td>{row["vg_difficulty"]:2.4f}</td>'
-            f'<td>{row["boys_runner_count"]}</td>'
-            f'<td>{row["girls_runner_count"]}</td>'
+            f'<td class="num">{row["vb_difficulty"]:2.4f}</td>'
+            f'<td class="num">{row["vg_difficulty"]:2.4f}</td>'
+            f'<td class="num">{row["boys_runner_count"]}</td>'
+            f'<td class="num">{row["girls_runner_count"]}</td>'
             f'<td>{row["local_course"]}</td>'
             f'</tr>', file=file_pointer)
     print(HTML_FOOTER, file=file_pointer)
