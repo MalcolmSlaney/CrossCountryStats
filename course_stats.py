@@ -661,7 +661,7 @@ def plot_difficulty_comparison(scatter_df: pd.DataFrame,
 
   my_plot.legend.location = 'top_left'
   if filename:
-    bokeh.plotting.save()
+    bokeh.plotting.save(my_plot)
 
   return my_plot
 
