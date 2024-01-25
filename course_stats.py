@@ -628,11 +628,11 @@ def plot_year_month_difficulty_tradeoff(
     plt.savefig(filename)
 
 
-def plot_difficulty_comparison(scatter_df: pd.DataFrame, 
+def plot_difficulty_comparison(scatter_df: pd.DataFrame,
                                filename: Optional[str] = None):
   # Drop the data point for Spooner since it's a very long distance.
   if filename:
-    bokeh.plotting.output_file(filename=filename, 
+    bokeh.plotting.output_file(filename=filename,
                                title='Difficulty Scatter Plot')
   my_plot = bokeh.plotting.figure(
     title="Varsity Boy/Girl Course Difficulty Comparison",
@@ -783,7 +783,8 @@ def main(_):
   table_title = ('California Course Difficulties '
                  f'({scatter_df.shape[0]} courses)')
   create_html_table(
-      scatter_df, os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
+      scatter_df.sort_values('vb_difficulty'),
+      os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
       title=table_title)
 
   filename=os.path.join(DEFAULT_DATA_DIR,
