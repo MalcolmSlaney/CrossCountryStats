@@ -764,8 +764,6 @@ def main(_):
       filename=os.path.join(DEFAULT_DATA_DIR,
                             'vb_year_month_course_tradeoff.png'))
 
-  plot_difficulty_comparison(scatter_df)
-
   # Create course difficulty summary tables
   local_course_list = find_local_courses(vb_data)
   scatter_df = create_result_frame(vb_data, vg_data,
