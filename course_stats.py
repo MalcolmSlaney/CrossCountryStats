@@ -416,6 +416,7 @@ HTML_FOOTER = """
       </table>
     </div>
     <p>
+    <style>table.sortable th button { position: relative; }<style>
   </body>
 </html>
 """
