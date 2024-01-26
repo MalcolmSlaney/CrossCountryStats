@@ -406,9 +406,6 @@ HTML_HEADER = """
                         <th class="num">
 							            <button># Girls<span aria-hidden="true"></span></button>
 						            </th>
-                        <th>
-							            <button>local<span aria-hidden="true"></span></button>
-						            </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -442,7 +439,6 @@ def create_html_table(race_data: pd.DataFrame,
             f'<td class="num">{row["vg_difficulty"]:2.4f}</td>'
             f'<td class="num">{row["boys_runner_count"]}</td>'
             f'<td class="num">{row["girls_runner_count"]}</td>'
-            f'<td>{row["local_course"]}</td>'
             f'</tr>', file=file_pointer)
     print(HTML_FOOTER, file=file_pointer)
 
