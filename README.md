@@ -8,7 +8,7 @@ The final results are here. You can click on a column header to sort the
 table by that column.
 
   * [Course difficulties for all California](https://www.slaney.org/malcolm/tmp/CrossCountryResults/course_difficulties.html), 
-  * [Course difficulties local to the Bay Area Peninsula](https://www.slaney.org/malcolm/tmp/CrossCountryResults/course_difficulties_local.html).
+  * [Course difficulties for those run by Bay Area Peninsula teams](https://www.slaney.org/malcolm/tmp/CrossCountryResults/course_difficulties_local.html).
 
 These results are normalized to times from Crystal Springs, which therefore
 has a difficulty of 1.0. 
