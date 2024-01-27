@@ -7,8 +7,8 @@ and thus the expected times for course A will be 10% higher.
 The final results are here. You can click on a column header to sort the
 table by that column.
 
-  * [Course difficulties for all California](https://www.slaney.org/malcolm/tmp/CrossCountryResults/course_difficulties.html), 
-  * [Course difficulties for those run by Bay Area Peninsula teams](https://www.slaney.org/malcolm/tmp/CrossCountryResults/course_difficulties_local.html).
+  * [Course difficulties for all California](https://malcolmslaney.github.io/CrossCountryStats/Results/course_difficulties.html), 
+  * [Course difficulties for those run by Bay Area Peninsula teams](https://malcolmslaney.github.io/CrossCountryStats/Results/course_difficulties_local.html).
 
 These results are normalized to times from Crystal Springs, which therefore
 has a difficulty of 1.0. 
@@ -226,4 +226,4 @@ Crystal Springs time, and thus this factor doesn't apply.
 
 You can see all these difficulty factors in the interactive comparison 
 viewer that is linked here.  You can zoom and move around to explore the data.
-[Course Difficulty Comparison Viewer](https://www.slaney.org/malcolm/tmp/CrossCountryResults/vb_vg_difficulties_comparison.html)
+[Course Difficulty Comparison Viewer](https://malcolmslaney.github.io/CrossCountryStats/Results/vb_vg_difficulties_comparison.html)
