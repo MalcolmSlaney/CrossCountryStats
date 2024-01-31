@@ -800,6 +800,19 @@ def main(_):
                         'vb_vg_difficulties_comparison.html')
   plot_difficulty_comparison(scatter_df, filename)
 
+  ######################  Check prediction quality #####################
+  y_pred = pm.sample_posterior_predictive(vb_model_trace,
+                                          model=vb_xc_model)
+  observed = y_pred['observed_data']['y_like'].values
+  predictions = np.mean(y_pred['posterior_predictive']['y_like'].values, 
+                        axis=(0, 1))  # Average over chains and draws
+  y_error = (observed - predictions)/observed*100
+  plt.clf()
+  plt.hist(y_error, bins=100)
+  plt.xlabel('Prediction Error (%)')
+  filename = os.path.join(DEFAULT_DATA_DIR, 'vb_prediction_error_histogram.png')
+  plt.savefig(filename)
+
   print(f'All done after {(time.time()-start_time)/60.0} minutes.')
 
 if __name__ == '__main__':
