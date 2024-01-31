@@ -713,7 +713,7 @@ def main(_):
     vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
       vb_select, chains=FLAGS.chains, draws=FLAGS.draws, seed=rng)
     if FLAGS.cache_dir:
-      os.makedirs(FLAGS.cache_dir)
+      os.makedirs(FLAGS.cache_dir, exist_ok=True)
       save_model(cache_file,
                  vb_xc_model, vb_model_trace, vb_map_estimate,
                  top_runner_percent, vb_data,
@@ -733,7 +733,7 @@ def main(_):
     vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
       vg_select, chains=FLAGS.chains, draws=FLAGS.draws, seed=rng)
     if FLAGS.cache_dir:
-      os.makedirs(FLAGS.cache_dir)
+      os.makedirs(FLAGS.cache_dir, exist_ok=True)
       save_model(cache_file,
                  vg_xc_model, vg_model_trace, vg_map_estimate,
                  top_runner_percent, vg_data,
