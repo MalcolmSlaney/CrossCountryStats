@@ -694,12 +694,6 @@ def main(_):
 
   # Work with the top 25% of results for now.
   top_runner_percent = 25
-  vb_select, vb_runner_mapper, vb_course_mapper = prepare_xc_data(
-      vb_data,
-      place_fraction=top_runner_percent/100.0)
-  vg_select, vg_runner_mapper, vg_course_mapper = prepare_xc_data(
-      vg_data,
-      place_fraction=top_runner_percent/100.0)
 
   cache_file = os.path.join(FLAGS.cache_dir, 'vb_analysis.pickle')
   if FLAGS.cache_dir and os.path.exists(cache_file):
@@ -709,6 +703,9 @@ def main(_):
      vb_course_mapper, vb_runner_mapper,
      vb_map_estimate) = load_model(cache_file, None)
   else:
+    vb_select, vb_runner_mapper, vb_course_mapper = prepare_xc_data(
+        vb_data,
+        place_fraction=top_runner_percent/100.0)
     print('\nBuilding boys model...')
     vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
       vb_select, chains=FLAGS.chains, draws=FLAGS.draws, seed=rng)
@@ -729,6 +726,9 @@ def main(_):
      vg_course_mapper, vg_runner_mapper,
      vg_map_estimate) = load_model(cache_file, None)
   else:
+    vg_select, vg_runner_mapper, vg_course_mapper = prepare_xc_data(
+        vg_data,
+        place_fraction=top_runner_percent/100.0)
     print('\nBuilding girls model...')
     vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
       vg_select, chains=FLAGS.chains, draws=FLAGS.draws, seed=rng)
