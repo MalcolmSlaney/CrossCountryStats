@@ -278,7 +278,7 @@ def build_and_test_model(xc_data: pd.DataFrame,
                          chains: int = 2,
                          draws: int = 1000,
                          tune: int = 1000,  # Shorten for debugging
-                         ) -> Tuple[
+                         seed: Optional[np.random.Generator] = None) -> Tuple[
     pm.Model, dict[str, np.ndarray], az.InferenceData]:
   """Find the MAP and parameter distributions for the given data."""
   xc_model = create_xc_model(xc_data)
@@ -288,7 +288,7 @@ def build_and_test_model(xc_data: pd.DataFrame,
 
   print(f'Find the MCMC distribution for {xc_data.shape[0]} results....')
   model_trace = pm.sample(model=xc_model, chains=chains,
-                          draws=draws, tune=tune)
+                          draws=draws, tune=tune, random_seed=seed)
   return xc_model, map_estimate, model_trace
 
 
@@ -675,10 +675,16 @@ flags.DEFINE_string('data_dir', DEFAULT_DATA_DIR,
                     'Where to store the program results.')
 flags.DEFINE_string('cache_dir', '',
                     'Where to cache the analysis results.')
+flags.DEFINE_integer('seed', -1, 'Initial random seed for entire program.'
+                     'A megative value means do not initialze.')
 
 def main(_):
   start_time = time.time()
   print(f'Have {os.cpu_count()} CPUs available for this job.')
+
+  if FLAGS.seed >= 0:
+    # https://discourse.pymc.io/t/how-to-set-a-seed-for-pm-sample/11497
+    rng = np.random.default_rng(FLAGS.seed)
   vb_data = import_xcstats('boys_v2.csv')
   vg_data = import_xcstats('girls_v2.csv')
   print(f'Read in {vb_data.shape[0]} boys and '
@@ -703,7 +709,7 @@ def main(_):
   else:
     print('\nBuilding boys model...')
     vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
-      vb_select, chains=FLAGS.chains, draws=FLAGS.draws)
+      vb_select, chains=FLAGS.chains, draws=FLAGS.draws, seed=rng)
     if FLAGS.cache_dir:
       save_model(cache_file,
                  vb_xc_model, vb_model_trace, vb_map_estimate,
@@ -722,7 +728,7 @@ def main(_):
   else:
     print('\nBuilding girls model...')
     vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
-      vg_select, chains=FLAGS.chains, draws=FLAGS.draws)
+      vg_select, chains=FLAGS.chains, draws=FLAGS.draws, seed=rng)
     if FLAGS.cache_dir:
       save_model(cache_file,
                  vg_xc_model, vg_model_trace, vg_map_estimate,
