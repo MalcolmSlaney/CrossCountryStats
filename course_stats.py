@@ -685,6 +685,8 @@ def main(_):
   if FLAGS.seed >= 0:
     # https://discourse.pymc.io/t/how-to-set-a-seed-for-pm-sample/11497
     rng = np.random.default_rng(FLAGS.seed)
+  else: 
+    rng = None
   vb_data = import_xcstats('boys_v2.csv')
   vg_data = import_xcstats('girls_v2.csv')
   print(f'Read in {vb_data.shape[0]} boys and '
