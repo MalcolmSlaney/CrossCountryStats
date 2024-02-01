@@ -3,7 +3,7 @@
 import datetime
 import os
 import time
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from absl import app
 from absl import flags
@@ -117,10 +117,10 @@ def generate_xc_data(n_samples: int = 4000,
   return new_df, course_difficulties, runner_abilities
 
 def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
-                    use_month: bool = True,
-                    use_year: bool = True,
-                    use_course: bool = True,
-                    use_runner: bool = True,
+                    month_spec: Optional[str] = 'normal,0,100',
+                    year_spec: Optional[str] = 'normal,0,100',
+                    course_spec: Optional[str] = 'normal,1,1',
+                    runner_spec: Optional[str] = 'normal,1,1',
                     noise_seconds: float = 10,
                     ) -> pm.Model:
   """Build a model connecting runner and course parameters,
@@ -131,6 +131,39 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
     course_ids (which course is run, a small integer)
     runner_ids (a small integer)
   """
+  def make_model(name: str, 
+                 shape: Union[int, Tuple[int]],
+                 definition: Optional[str]) -> Union[float, pm.Distribution]:
+    """Given a distribution spec, create the PYMC object that implements it.
+
+    Args:
+      name: The name of the variable with the given distribution.
+      shape: The shape of the distribution, either an integer or a tuple
+      definition: A distribution name, and optional parameters, comma separated.
+        e.g. normal,0,1 means create a Normal distribution with mean 0 and 
+        sigma 1.
+
+    Returns:
+      Either 1.0 (for none or constant variables) or a PYMC distribution object.
+    """
+    if not definition:
+      return 1.0
+    specs = definition.split(',')
+    if specs[0].lower() == 'constant' or specs[0].lower() == 'none':
+      return 1.0
+    elif specs[0].lower() == 'normal':  
+      if len(specs) > 1:
+        mean = float(specs[1])
+      else:
+        mean = 0.0
+      if len(specs) > 2:
+        sigma = float(specs[2])
+      else:
+        sigma = 1
+      return pm.Normal(name, mu=mean, sigma=sigma, shape=shape)
+    else:
+      raise ValueError(f'Unknown model type: {definition}')
+
   mean_time = np.mean(data.times.values)
   num_courses = len(set(data.course_ids.values))
   num_runners = len(set(data.runner_ids.values))
@@ -140,35 +173,20 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
   with pm.Model() as a_model:
     # Intercept prior
     bias = pm.Normal('bias', mu=mean_time, sigma=100)
-    # Month prior
-    if use_month:
-      monthly_slope = pm.Normal('monthly_slope', mu=0, sigma=100)
+    monthly_slope = make_model('monthly_slope', 1, month_spec)
+    yearly_slope = make_model('yearly_slope', 1, year_spec)
+    course_est = make_model('course_est', num_courses, course_spec)
+    runner_est = make_model('runner_est', num_runners, runner_spec)
 
-    # Year prior
-    if use_year:
-      yearly_slope = pm.Normal('yearly_slope', mu=0, sigma=100)
-
-    # Course IDs
-    if use_course:
-      course_est = pm.Normal('course_est', mu=1, sigma=1,
-                             shape=num_courses)
-
-    if use_runner:
-      runner_est = pm.Normal('runner_est', mu=1, sigma=1,
-                             shape=num_runners)
     # Model error prior
     eps = noise_seconds*pm.HalfCauchy('eps', beta=1)
 
     # Now put it all together to match the time predictions.
     time_est = bias
-    if use_month:
-      time_est -= monthly_slope * data.race_month.values
-    if use_year:
-      time_est -= yearly_slope * data.runner_year.values
-    if use_course:
-      time_est *= course_est[data.course_ids.values]  # pylint: disable=unsubscriptable-object
-    if use_runner:
-      time_est *= runner_est[data.runner_ids.values]  # pylint: disable=unsubscriptable-object
+    time_est -= monthly_slope * data.race_month.values
+    time_est -= yearly_slope * data.runner_year.values
+    time_est *= course_est[data.course_ids.values]  # pylint: disable=unsubscriptable-object
+    time_est *= runner_est[data.runner_ids.values]  # pylint: disable=unsubscriptable-object
 
     # Data likelihood
     pm.Normal('y_like', mu=time_est, sigma=eps, observed=data.times.values)
@@ -275,13 +293,18 @@ def prepare_xc_data(data: pd.DataFrame,
 
 
 def build_and_test_model(xc_data: pd.DataFrame,
+                         monthly_spec: str,
+                         yearly_spec: str,
+                         course_spec: str,
+                         runner_spec: str,
                          chains: int = 2,
                          draws: int = 1000,
                          tune: int = 1000,  # Shorten for debugging
                          seed: Optional[np.random.Generator] = None) -> Tuple[
     pm.Model, dict[str, np.ndarray], az.InferenceData]:
   """Find the MAP and parameter distributions for the given data."""
-  xc_model = create_xc_model(xc_data)
+  xc_model = create_xc_model(xc_data, monthly_spec, yearly_spec,
+                             course_spec, runner_spec)
   print(f'Find the MAP estimate for {xc_data.shape[0]} results.')
   print(f'   Calculating {chains} chains each with {draws} draws.')
   map_estimate = pm.find_MAP(model=xc_model)
@@ -677,6 +700,14 @@ flags.DEFINE_string('cache_dir', '',
                     'Where to cache the analysis results.')
 flags.DEFINE_integer('seed', -1, 'Initial random seed for entire program.'
                      'A megative value means do not initialze.')
+flags.DEFINE_string('monthly_spec', 'normal,0,100', 
+                    'Model and params for the monthly model')
+flags.DEFINE_string('yearly_spec', 'normal,0,100', 
+                    'Model and params for the yearly model')
+flags.DEFINE_string('course_spec', 'normal,1,1', 
+                    'Model and params for the course model')
+flags.DEFINE_string('runner_spec', 'normal,1,1', 
+                    'Model and params for the runner model')
 
 def main(_):
   start_time = time.time()
@@ -708,7 +739,9 @@ def main(_):
         place_fraction=top_runner_percent/100.0)
     print('\nBuilding boys model...')
     vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
-      vb_select, chains=FLAGS.chains, draws=FLAGS.draws, seed=rng)
+      vb_select, FLAGS.monthly_spec, FLAGS.yearly_spec, 
+      FLAGS.course_spec, FLAGS.runner_spec, chains=FLAGS.chains, 
+      draws=FLAGS.draws, seed=rng)
     if FLAGS.cache_dir:
       os.makedirs(FLAGS.cache_dir, exist_ok=True)
       save_model(cache_file,
@@ -731,7 +764,9 @@ def main(_):
         place_fraction=top_runner_percent/100.0)
     print('\nBuilding girls model...')
     vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
-      vg_select, chains=FLAGS.chains, draws=FLAGS.draws, seed=rng)
+      vg_select, FLAGS.monthly_spec, FLAGS.yearly_spec, 
+      FLAGS.course_spec, FLAGS.runner_spec, chains=FLAGS.chains, 
+      draws=FLAGS.draws, seed=rng)
     if FLAGS.cache_dir:
       os.makedirs(FLAGS.cache_dir, exist_ok=True)
       save_model(cache_file,
@@ -807,6 +842,8 @@ def main(_):
   predictions = np.mean(y_pred['posterior_predictive']['y_like'].values, 
                         axis=(0, 1))  # Average over chains and draws
   y_error = (observed - predictions)/observed*100
+  y_error_std = np.std(y_error)
+  print(f'Standard deviation of prediction errors is {y_error_std}')
   plt.clf()
   plt.hist(y_error, bins=100)
   plt.xlabel('Prediction Error (%)')
