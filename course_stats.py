@@ -843,7 +843,10 @@ def main(_):
                         axis=(0, 1))  # Average over chains and draws
   y_error = (observed - predictions)/observed*100
   y_error_std = np.std(y_error)
-  print(f'Standard deviation of prediction errors is {y_error_std}')
+  job_description = (f'{FLAGS.monthly_spec}/{FLAGS.yearly_spec}/' 
+                     f'{FLAGS.course_spec}/{FLAGS.runner_spec}')
+  print(f'\nStandard deviation of prediction errors is {y_error_std}% for '
+        f'{job_description}')
   plt.clf()
   plt.hist(y_error, bins=100)
   plt.xlabel('Prediction Error (%)')
