@@ -161,6 +161,18 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
       else:
         sigma = 1
       return pm.Normal(name, mu=mean, sigma=sigma, shape=shape)
+    elif specs[0].lower() == 'gamma':  
+      # https://www.pymc.io/projects/docs/en/stable/api/distributions/generated/pymc.Gamma.html#pymc.Gamma
+      if len(specs) > 1:
+        mean = float(specs[1])
+      else:
+        mean = 0.0
+      if len(specs) > 2:
+        sigma = float(specs[2])
+      else:
+        sigma = 1
+      assert sigma > 0, 'Sigma in a Gamma distribution must be greater than 0'
+      return pm.Gamma(name, mu=mean, sigma=sigma, shape=shape)
     else:
       raise ValueError(f'Unknown model type: {definition}')
 
@@ -533,13 +545,15 @@ def plot_monthly_slope_predictions(
     trace_data: az.InferenceData,
     title: str = 'Histogram of Monthly Slope Predictions',
     num_bins: int = 20,
-    filename: Optional[str] = None) -> List[np.ndarray]:
+    filename: Optional[str] = None) -> Optional[List[np.ndarray]]:
 
   def add_line(x_loc, label):
     axis_limits = plt.axis()
     plt.plot([x_loc, x_loc], axis_limits[2:], '--', label=label)
     plt.text(x_loc, np.mean(axis_limits[2:]), f'{x_loc:4.3}')
 
+  if 'monthly_slope' not in trace_data.posterior:
+    return None
   monthly_trace_means = []
   slopes = trace_data.posterior.monthly_slope.values
   min_slope = np.min(slopes.flatten())
@@ -565,13 +579,15 @@ def plot_yearly_slope_predictions(
     trace_data: az.InferenceData,
     title: str = 'Histogram of Yearly Slope Predictions',
     num_bins: int = 20,
-    filename: Optional[str] = None) -> List[np.ndarray]:
+    filename: Optional[str] = None) -> Optional[List[np.ndarray]]:
 
   def add_line(x_loc, label):
     axis_limits = plt.axis()
     plt.plot([x_loc, x_loc], axis_limits[2:], '--', label=label)
     plt.text(x_loc, np.mean(axis_limits[2:]), f'{x_loc:4.3}')
 
+  if 'yearly_slope' not in trace_data.posterior:
+    return None
   yearly_trace_means = []
 
   slopes = trace_data.posterior.yearly_slope.values
@@ -600,6 +616,8 @@ def plot_map_trace_difficulty_comparison(
     title: str = 'Comparison of Course Difficult Estimates',
     difficulty_limit:float = 2.2,  # Drop Spooner since it's way long.
     filename: Optional[str] = None) -> List[np.ndarray]:
+  if 'course_est' not in model_trace.posterior:
+    return
   # Plot the MAP vs. mean trace estimate of the course difficulties.
   course_difficulties = model_trace.posterior.course_est.values
   plt.clf()
@@ -708,6 +726,8 @@ flags.DEFINE_string('course_spec', 'normal,1,1',
                     'Model and params for the course model')
 flags.DEFINE_string('runner_spec', 'normal,1,1', 
                     'Model and params for the runner model')
+flags.DEFINE_enum('genders', 'both', ['boys', 'girls', 'both'],
+                  'Which genders to train and test.')
 
 def main(_):
   start_time = time.time()
@@ -726,132 +746,140 @@ def main(_):
   # Work with the top 25% of results for now.
   top_runner_percent = 25
 
-  cache_file = os.path.join(FLAGS.cache_dir, 'vb_analysis.pickle')
-  if FLAGS.cache_dir and os.path.exists(cache_file):
-    print('\nLoading boys model')
-    (vb_xc_model, vb_model_trace,
-     top_runner_percent, vb_data,
-     vb_course_mapper, vb_runner_mapper,
-     vb_map_estimate) = load_model(cache_file, None)
+  if FLAGS.genders in ('both', 'boys'):
+    cache_file = os.path.join(FLAGS.cache_dir, 'vb_analysis.pickle')
+    if FLAGS.cache_dir and os.path.exists(cache_file):
+      print('\nLoading boys model')
+      (vb_xc_model, vb_model_trace,
+      top_runner_percent, vb_data,
+      vb_course_mapper, vb_runner_mapper,
+      vb_map_estimate) = load_model(cache_file, None)
+    else:
+      vb_select, vb_runner_mapper, vb_course_mapper = prepare_xc_data(
+          vb_data,
+          place_fraction=top_runner_percent/100.0)
+      print('\nBuilding boys model...')
+      vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
+        vb_select, FLAGS.monthly_spec, FLAGS.yearly_spec, 
+        FLAGS.course_spec, FLAGS.runner_spec, chains=FLAGS.chains, 
+        draws=FLAGS.draws, seed=rng)
+      if FLAGS.cache_dir:
+        os.makedirs(FLAGS.cache_dir, exist_ok=True)
+        save_model(cache_file,
+                  vb_xc_model, vb_model_trace, vb_map_estimate,
+                  top_runner_percent, vb_data,
+                  vb_course_mapper, vb_runner_mapper,
+                  default_dir=None)
+    print(vb_map_estimate)
   else:
-    vb_select, vb_runner_mapper, vb_course_mapper = prepare_xc_data(
-        vb_data,
-        place_fraction=top_runner_percent/100.0)
-    print('\nBuilding boys model...')
-    vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
-      vb_select, FLAGS.monthly_spec, FLAGS.yearly_spec, 
-      FLAGS.course_spec, FLAGS.runner_spec, chains=FLAGS.chains, 
-      draws=FLAGS.draws, seed=rng)
-    if FLAGS.cache_dir:
-      os.makedirs(FLAGS.cache_dir, exist_ok=True)
-      save_model(cache_file,
-                 vb_xc_model, vb_model_trace, vb_map_estimate,
-                 top_runner_percent, vb_data,
-                 vb_course_mapper, vb_runner_mapper,
-                 default_dir=None)
-  print(vb_map_estimate)
+    print('Not building boys model.')
 
-  cache_file = os.path.join(FLAGS.cache_dir, 'vg_analysis.pickle')
-  if FLAGS.cache_dir and os.path.exists(cache_file):
-    print('\nLoading girls model')
-    (vg_xc_model, vg_model_trace,
-     top_runner_percent, vg_data,
-     vg_course_mapper, vg_runner_mapper,
-     vg_map_estimate) = load_model(cache_file, None)
+  if FLAGS.genders in ('both', 'girls'):
+    cache_file = os.path.join(FLAGS.cache_dir, 'vg_analysis.pickle')
+    if FLAGS.cache_dir and os.path.exists(cache_file):
+      print('\nLoading girls model')
+      (vg_xc_model, vg_model_trace,
+      top_runner_percent, vg_data,
+      vg_course_mapper, vg_runner_mapper,
+      vg_map_estimate) = load_model(cache_file, None)
+    else:
+      vg_select, vg_runner_mapper, vg_course_mapper = prepare_xc_data(
+          vg_data,
+          place_fraction=top_runner_percent/100.0)
+      print('\nBuilding girls model...')
+      vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
+        vg_select, FLAGS.monthly_spec, FLAGS.yearly_spec, 
+        FLAGS.course_spec, FLAGS.runner_spec, chains=FLAGS.chains, 
+        draws=FLAGS.draws, seed=rng)
+      if FLAGS.cache_dir:
+        os.makedirs(FLAGS.cache_dir, exist_ok=True)
+        save_model(cache_file,
+                  vg_xc_model, vg_model_trace, vg_map_estimate,
+                  top_runner_percent, vg_data,
+                  vg_course_mapper, vg_runner_mapper,
+                  default_dir=None)
+    print(vg_map_estimate)
   else:
-    vg_select, vg_runner_mapper, vg_course_mapper = prepare_xc_data(
-        vg_data,
-        place_fraction=top_runner_percent/100.0)
-    print('\nBuilding girls model...')
-    vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
-      vg_select, FLAGS.monthly_spec, FLAGS.yearly_spec, 
-      FLAGS.course_spec, FLAGS.runner_spec, chains=FLAGS.chains, 
-      draws=FLAGS.draws, seed=rng)
-    if FLAGS.cache_dir:
-      os.makedirs(FLAGS.cache_dir, exist_ok=True)
-      save_model(cache_file,
-                 vg_xc_model, vg_model_trace, vg_map_estimate,
-                 top_runner_percent, vg_data,
-                 vg_course_mapper, vg_runner_mapper,
-                 default_dir=None)
-  print(vg_map_estimate)
+    print('Not building girls model.')
 
-  # Plot all the (VB) results.
-  plot_map_course_difficulties(
-      vb_map_estimate,
-      title = 'Histogram of VB Course Difficulties (MAP)',
-      filename = os.path.join(DEFAULT_DATA_DIR,
-                              'vb_map_course_difficulties.png'))
+  ##################### Plot all the (VB) results.  ####################
+  if FLAGS.genders in ('both', 'boys'):
+    plot_map_course_difficulties(
+        vb_map_estimate,
+        title = 'Histogram of VB Course Difficulties (MAP)',
+        filename = os.path.join(DEFAULT_DATA_DIR,
+                                'vb_map_course_difficulties.png'))
 
-  vb_monthly_trace_means = plot_monthly_slope_predictions(
-      vb_model_trace,
-      title='Histogram of VB Monthly Slope Predictions',
-      filename=os.path.join(DEFAULT_DATA_DIR, 'vb_monthly_slope.png'))
+    vb_monthly_trace_means = plot_monthly_slope_predictions(
+        vb_model_trace,
+        title='Histogram of VB Monthly Slope Predictions',
+        filename=os.path.join(DEFAULT_DATA_DIR, 'vb_monthly_slope.png'))
 
-  vb_yearly_trace_means = plot_yearly_slope_predictions(
-      vb_model_trace,
-      title='Histogram of VB Yearly Slope Predictions',
-      filename=os.path.join(DEFAULT_DATA_DIR, 'vb_yearly_slope.png'))
+    vb_yearly_trace_means = plot_yearly_slope_predictions(
+        vb_model_trace,
+        title='Histogram of VB Yearly Slope Predictions',
+        filename=os.path.join(DEFAULT_DATA_DIR, 'vb_yearly_slope.png'))
 
-  vb_difficulty_trace_slopes = plot_map_trace_difficulty_comparison(
-      vb_map_estimate,
-      vb_model_trace,
-      title='Comparison of VB Course Difficulty Estimates',
-      filename=os.path.join(DEFAULT_DATA_DIR,
-                            'vb_course_difficulty_comparison.png'))
+    vb_difficulty_trace_slopes = plot_map_trace_difficulty_comparison(
+        vb_map_estimate,
+        vb_model_trace,
+        title='Comparison of VB Course Difficulty Estimates',
+        filename=os.path.join(DEFAULT_DATA_DIR,
+                              'vb_course_difficulty_comparison.png'))
 
-  plot_year_month_difficulty_tradeoff(
-      vb_monthly_trace_means,
-      vb_yearly_trace_means,
-      vb_difficulty_trace_slopes,
-      title='Tradeoff between VB year/month and course difficulties',
-      filename=os.path.join(DEFAULT_DATA_DIR,
-                            'vb_year_month_course_tradeoff.png'))
+    if vb_monthly_trace_means and vb_yearly_trace_means:
+      plot_year_month_difficulty_tradeoff(
+          vb_monthly_trace_means,
+          vb_yearly_trace_means,
+          vb_difficulty_trace_slopes,
+          title='Tradeoff between VB year/month and course difficulties',
+          filename=os.path.join(DEFAULT_DATA_DIR,
+                                'vb_year_month_course_tradeoff.png'))
 
-  # Create course difficulty summary tables
-  local_course_list = find_local_courses(vb_data)
-  scatter_df = create_result_frame(vb_data, vg_data,
-                                   vb_course_mapper, vg_course_mapper,
-                                   vb_model_trace, vg_model_trace,
-                                   local_course_list)
+    # Create course difficulty summary tables
+    local_course_list = find_local_courses(vb_data)
+    scatter_df = create_result_frame(vb_data, vg_data,
+                                    vb_course_mapper, vg_course_mapper,
+                                    vb_model_trace, vg_model_trace,
+                                    local_course_list)
 
-  local_df = scatter_df[scatter_df['local_course']].sort_values('vb_difficulty')
-  table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
-  create_html_table(
-    local_df,
-    os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
-    title=table_title)
-
-  create_markdown_table(local_df)
-
-  table_title = ('California Course Difficulties '
-                 f'({scatter_df.shape[0]} courses)')
-  create_html_table(
-      scatter_df.sort_values('vb_difficulty'),
-      os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
+    local_df = scatter_df[scatter_df['local_course']].sort_values('vb_difficulty')
+    table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
+    create_html_table(
+      local_df,
+      os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
       title=table_title)
 
-  filename=os.path.join(DEFAULT_DATA_DIR,
-                        'vb_vg_difficulties_comparison.html')
-  plot_difficulty_comparison(scatter_df, filename)
+    create_markdown_table(local_df)
 
-  ######################  Check prediction quality #####################
-  y_pred = pm.sample_posterior_predictive(vb_model_trace,
-                                          model=vb_xc_model)
-  observed = y_pred['observed_data']['y_like'].values
-  predictions = np.mean(y_pred['posterior_predictive']['y_like'].values, 
-                        axis=(0, 1))  # Average over chains and draws
-  y_error = (observed - predictions)/observed*100
-  y_error_std = np.std(y_error)
-  job_description = (f'{FLAGS.monthly_spec}/{FLAGS.yearly_spec}/' 
-                     f'{FLAGS.course_spec}/{FLAGS.runner_spec}')
-  print(f'\nStandard deviation of prediction errors is {y_error_std}% for '
-        f'{job_description}')
-  plt.clf()
-  plt.hist(y_error, bins=100)
-  plt.xlabel('Prediction Error (%)')
-  filename = os.path.join(DEFAULT_DATA_DIR, 'vb_prediction_error_histogram.png')
-  plt.savefig(filename)
+    table_title = ('California Course Difficulties '
+                  f'({scatter_df.shape[0]} courses)')
+    create_html_table(
+        scatter_df.sort_values('vb_difficulty'),
+        os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
+        title=table_title)
+
+    filename=os.path.join(DEFAULT_DATA_DIR,
+                          'vb_vg_difficulties_comparison.html')
+    plot_difficulty_comparison(scatter_df, filename)
+
+    ######################  Check prediction quality #####################
+    y_pred = pm.sample_posterior_predictive(vb_model_trace,
+                                            model=vb_xc_model)
+    observed = y_pred['observed_data']['y_like'].values
+    predictions = np.mean(y_pred['posterior_predictive']['y_like'].values, 
+                          axis=(0, 1))  # Average over chains and draws
+    y_error = (observed - predictions)/observed*100
+    y_error_std = np.std(y_error)
+    job_description = (f'{FLAGS.monthly_spec}/{FLAGS.yearly_spec}/' 
+                      f'{FLAGS.course_spec}/{FLAGS.runner_spec}')
+    print(f'\nStandard deviation of prediction errors is {y_error_std}% for '
+          f'{job_description}')
+    plt.clf()
+    plt.hist(y_error, bins=100)
+    plt.xlabel('Prediction Error (%)')
+    filename = os.path.join(DEFAULT_DATA_DIR, 'vb_prediction_error_histogram.png')
+    plt.savefig(filename)
 
   print(f'All done after {(time.time()-start_time)/60.0} minutes.')
 
