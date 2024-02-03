@@ -149,6 +149,7 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
     if not definition:
       return 1.0
     specs = definition.split(',')
+    print(f'Creating a model distribution for {definition}')
     if specs[0].lower() == 'constant' or specs[0].lower() == 'none':
       return 1.0
     elif specs[0].lower() == 'normal':  
@@ -640,7 +641,8 @@ def plot_map_trace_difficulty_comparison(
   plt.plot([0, 2], [0, 2], '--')
   plt.xlabel('MAP Estimate')
   plt.ylabel('Mean of Trace')
-  plt.legend()
+  if course_difficulties.shape[0] <= 4:  # Don't bother with legend if too many
+    plt.legend()
   plt.title(title)
   if filename:
     plt.savefig(filename)
