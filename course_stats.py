@@ -753,7 +753,7 @@ def main(_):
     if FLAGS.cache_dir and os.path.exists(cache_file):
       print('\nLoading boys model')
       (vb_xc_model, vb_model_trace,
-      top_runner_percent, vb_data,
+      top_runner_percent, vb_select,
       vb_course_mapper, vb_runner_mapper,
       vb_map_estimate) = load_model(cache_file, None)
     else:
@@ -769,7 +769,7 @@ def main(_):
         os.makedirs(FLAGS.cache_dir, exist_ok=True)
         save_model(cache_file,
                   vb_xc_model, vb_model_trace, vb_map_estimate,
-                  top_runner_percent, vb_data,
+                  top_runner_percent, vb_select,
                   vb_course_mapper, vb_runner_mapper,
                   default_dir=None)
     print(vb_map_estimate)
@@ -781,7 +781,7 @@ def main(_):
     if FLAGS.cache_dir and os.path.exists(cache_file):
       print('\nLoading girls model')
       (vg_xc_model, vg_model_trace,
-      top_runner_percent, vg_data,
+      top_runner_percent, vg_select,
       vg_course_mapper, vg_runner_mapper,
       vg_map_estimate) = load_model(cache_file, None)
     else:
@@ -797,7 +797,7 @@ def main(_):
         os.makedirs(FLAGS.cache_dir, exist_ok=True)
         save_model(cache_file,
                   vg_xc_model, vg_model_trace, vg_map_estimate,
-                  top_runner_percent, vg_data,
+                  top_runner_percent, vg_select,
                   vg_course_mapper, vg_runner_mapper,
                   default_dir=None)
     print(vg_map_estimate)
@@ -837,6 +837,16 @@ def main(_):
           title='Tradeoff between VB year/month and course difficulties',
           filename=os.path.join(DEFAULT_DATA_DIR,
                                 'vb_year_month_course_tradeoff.png'))
+      
+    # Plot number of races per (VB) runner.
+    print(vb_select.head())
+    boy_counts = vb_select.groupby(['runnerID']).size()
+    plt.clf()
+    plt.hist(boy_counts)
+    plt.xlabel('Number of Races')
+    plt.title('VB Race Counts per Runner')
+    filename = os.path.join(DEFAULT_DATA_DIR, 'vb_race_frequency_histogram.png')
+    plt.savefig(filename)
 
     # Create course difficulty summary tables
     local_course_list = find_local_courses(vb_data)
@@ -880,6 +890,7 @@ def main(_):
     plt.clf()
     plt.hist(y_error, bins=100)
     plt.xlabel('Prediction Error (%)')
+    plt.title('VB Model Prediction Errors')
     filename = os.path.join(DEFAULT_DATA_DIR, 'vb_prediction_error_histogram.png')
     plt.savefig(filename)
 
