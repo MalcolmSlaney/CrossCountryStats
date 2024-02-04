@@ -838,15 +838,15 @@ def main(_):
           filename=os.path.join(DEFAULT_DATA_DIR,
                                 'vb_year_month_course_tradeoff.png'))
       
-    # Plot number of races per (VB) runner.
-    print(vb_select.head())
-    boy_counts = vb_select.groupby(['runnerID']).size()
-    plt.clf()
-    plt.hist(boy_counts)
-    plt.xlabel('Number of Races')
-    plt.title('VB Race Counts per Runner')
-    filename = os.path.join(DEFAULT_DATA_DIR, 'vb_race_frequency_histogram.png')
-    plt.savefig(filename)
+      # Plot number of races per (VB) runner.
+      print(vb_select.head())
+      boy_counts = vb_select.groupby(['runnerID']).size()
+      plt.clf()
+      plt.hist(boy_counts, bins=20)
+      plt.xlabel('Number of Races')
+      plt.title('VB Race Counts per Runner')
+      filename = os.path.join(DEFAULT_DATA_DIR, 'vb_race_frequency_histogram.png')
+      plt.savefig(filename)
 
     # Create course difficulty summary tables
     local_course_list = find_local_courses(vb_data)
