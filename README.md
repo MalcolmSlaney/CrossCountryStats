@@ -150,7 +150,7 @@ This model predicts the following improvements:
 | | Monthly Improvement | Yearly Improvement |
 |----:|:----:|:---:|
 | Boys | 10.5s | 15.2s |
-| Girls | 16.1s | 9.4s |
+| Girls | 16.4s | 9.6s |
 
 [I don't know why the slopes are so different between boys and girls.  Perhaps
 a function of the girl's earlier maturity?]
@@ -162,7 +162,45 @@ is much longer.
 
 ![Course Difficulty Distribution](Results/vb_map_course_difficulties.png)
 
-Our results are based o
+We don't have the same amount of data for each runner. The histogram below shows
+the distribution of races per runner.
+
+![Varsity Boys Course Frequency](Results/vb_race_frequency_histogram.png)
+
+This code makes predictions of each runner's time on each course. We can plot
+the *training* error to get a sense of the model's accuracy.  
+This is shown below for the full model.
+
+![Varsity Boys Prediction Error](Results/vb_prediction_error_histogram.png)
+
+We build our model using a combination of normal (Gaussian) and gamma
+prior distributions.  
+Here are the priors for each model:
+
+| | Distribution mean| Distribution sigma |
+|----:|:----:|:---:|
+| Monthly Slope | 10.0 | 10.0 |
+| Yearly Slope | 10.0 | 10.0 |
+| Course Difficulty| 1.0 | 1.0 |
+| Runner Ability | 1.0 | 0.25 |
+
+These prior distributions lead to these prediction errors.
+They produce different errors, but most importantly.
+the gamma model produces fewer MCMC diversions, suggesting it is better 
+behaved.  
+
+| | Normal | Gamma |
+|----:|:----:|:---:|
+| VB Prediction Error (%) | XX | 1.88 |
+
+Different models have different errors. We get better prediction errors
+if we include the monthly and yearly slope features. This is a histogram
+of the varsity boy model errors for the gamma prior.
+
+| | Model without slopes | Full model |
+|----:|:----:|:---:|
+| Average Prediction error (%) | 2.05 | 1.88 |
+
 ### Ill Posed
 Note, the *raw* outputs from this model are unnormalized and should be considered
 *relative* results. 
@@ -191,10 +229,10 @@ the trace is random, some traces might assume a lower value of A, and thus
 high values of B or C, all to explain the same observed data.
 
 The randomness of each trace makes it a litte harder to draw conclusions. 
-For the results presented here, we computed 20 traces, 
-with 1000 samples of each model parameter
+For the results presented here, we computed 36 traces, 
+with 2000 samples of each model parameter
 (this took about 3 hours for each gender's data).
-The final course difficulty numbers are based on averaging all 20000 trace
+The final course difficulty numbers are based on averaging all 72000 trace
 samples for each course, and then dividing by the average difficulty of the 
 Crystal Springs course, our baseline course.
 
