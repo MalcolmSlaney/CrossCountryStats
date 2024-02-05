@@ -715,7 +715,9 @@ flags.DEFINE_integer('chains', 2, 'Number of MCMC chains to explore',
 flags.DEFINE_integer('draws', 1000, 'Number of draws to make when sampling',
                      lower_bound=1)
 flags.DEFINE_string('data_dir', DEFAULT_DATA_DIR,
-                    'Where to store the program results.')
+                    'Where to find the raw data (course, runner, date, time).')
+flags.DEFINE_string('result_dir', DEFAULT_DATA_DIR,
+                    'Where to store the plots we generate.')
 flags.DEFINE_string('cache_dir', '',
                     'Where to cache the analysis results.')
 flags.DEFINE_integer('seed', -1, 'Initial random seed for entire program.'
@@ -805,27 +807,28 @@ def main(_):
     print('Not building girls model.')
 
   ##################### Plot all the (VB) results.  ####################
+  os.makedirs(FLAGS.result_dir, exist_ok=True)
   plot_map_course_difficulties(
       vb_map_estimate,
       title = 'Histogram of VB Course Difficulties (MAP)',
-      filename = os.path.join(DEFAULT_DATA_DIR,
+      filename = os.path.join(FLAGS.result_dir,
                               'vb_map_course_difficulties.png'))
 
   vb_monthly_trace_means = plot_monthly_slope_predictions(
       vb_model_trace,
       title='Histogram of VB Monthly Slope Predictions',
-      filename=os.path.join(DEFAULT_DATA_DIR, 'vb_monthly_slope.png'))
+      filename=os.path.join(FLAGS.result_dir, 'vb_monthly_slope.png'))
 
   vb_yearly_trace_means = plot_yearly_slope_predictions(
       vb_model_trace,
       title='Histogram of VB Yearly Slope Predictions',
-      filename=os.path.join(DEFAULT_DATA_DIR, 'vb_yearly_slope.png'))
+      filename=os.path.join(FLAGS.result_dir, 'vb_yearly_slope.png'))
 
   vb_difficulty_trace_slopes = plot_map_trace_difficulty_comparison(
       vb_map_estimate,
       vb_model_trace,
       title='Comparison of VB Course Difficulty Estimates',
-      filename=os.path.join(DEFAULT_DATA_DIR,
+      filename=os.path.join(FLAGS.result_dir,
                             'vb_course_difficulty_comparison.png'))
 
   if vb_monthly_trace_means and vb_yearly_trace_means:
@@ -834,7 +837,7 @@ def main(_):
         vb_yearly_trace_means,
         vb_difficulty_trace_slopes,
         title='Tradeoff between VB year/month and course difficulties',
-        filename=os.path.join(DEFAULT_DATA_DIR,
+        filename=os.path.join(FLAGS.result_dir,
                               'vb_year_month_course_tradeoff.png'))
     
     # Plot number of races per (VB) runner.
@@ -844,31 +847,31 @@ def main(_):
     plt.hist(boy_counts)
     plt.xlabel('Number of Races')
     plt.title('VB Race Counts per Runner')
-    filename = os.path.join(DEFAULT_DATA_DIR, 'vb_race_frequency_histogram.png')
+    filename = os.path.join(FLAGS.result_dir, 'vb_race_frequency_histogram.png')
     plt.savefig(filename)
 
   ##################### Plot all the (VG) results.  ####################
   plot_map_course_difficulties(
       vg_map_estimate,
       title = 'Histogram of VG Course Difficulties (MAP)',
-      filename = os.path.join(DEFAULT_DATA_DIR,
+      filename = os.path.join(FLAGS.result_dir,
                               'vg_map_course_difficulties.png'))
 
   vg_monthly_trace_means = plot_monthly_slope_predictions(
       vg_model_trace,
       title='Histogram of VG Monthly Slope Predictions',
-      filename=os.path.join(DEFAULT_DATA_DIR, 'vg_monthly_slope.png'))
+      filename=os.path.join(FLAGS.result_dir, 'vg_monthly_slope.png'))
 
   vg_yearly_trace_means = plot_yearly_slope_predictions(
       vg_model_trace,
       title='Histogram of VG Yearly Slope Predictions',
-      filename=os.path.join(DEFAULT_DATA_DIR, 'vg_yearly_slope.png'))
+      filename=os.path.join(FLAGS.result_dir, 'vg_yearly_slope.png'))
 
   vg_difficulty_trace_slopes = plot_map_trace_difficulty_comparison(
       vg_map_estimate,
       vg_model_trace,
       title='Comparison of VG Course Difficulty Estimates',
-      filename=os.path.join(DEFAULT_DATA_DIR,
+      filename=os.path.join(FLAGS.result_dir,
                             'vg_course_difficulty_comparison.png'))
 
   if vg_monthly_trace_means and vg_yearly_trace_means:
@@ -877,7 +880,7 @@ def main(_):
         vg_yearly_trace_means,
         vg_difficulty_trace_slopes,
         title='Tradeoff between VG year/month and course difficulties',
-        filename=os.path.join(DEFAULT_DATA_DIR,
+        filename=os.path.join(FLAGS.result_dir,
                               'vg_year_month_course_tradeoff.png'))
     
     # Plot number of races per (VG) runner.
@@ -886,7 +889,7 @@ def main(_):
     plt.hist(girl_counts)
     plt.xlabel('Number of Races')
     plt.title('VG Race Counts per Runner')
-    filename = os.path.join(DEFAULT_DATA_DIR, 'vg_race_frequency_histogram.png')
+    filename = os.path.join(FLAGS.result_dir, 'vg_race_frequency_histogram.png')
     plt.savefig(filename)
 
   ################## Create course difficulty summary tables ###################
@@ -900,7 +903,7 @@ def main(_):
   table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
   create_html_table(
     local_df,
-    os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
+    os.path.join(FLAGS.result_dir, 'course_difficulties_local.html'),
     title=table_title)
 
   create_markdown_table(local_df)
@@ -909,10 +912,10 @@ def main(_):
                 f'({scatter_df.shape[0]} courses)')
   create_html_table(
       scatter_df.sort_values('vb_difficulty'),
-      os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
+      os.path.join(FLAGS.result_dir, 'course_difficulties.html'),
       title=table_title)
 
-  filename=os.path.join(DEFAULT_DATA_DIR,
+  filename=os.path.join(FLAGS.result_dir,
                         'vb_vg_difficulties_comparison.html')
   plot_difficulty_comparison(scatter_df, filename)
 
@@ -932,7 +935,7 @@ def main(_):
   plt.hist(y_error, bins=100)
   plt.xlabel('Prediction Error (%)')
   plt.title('VB Model Prediction Errors')
-  filename = os.path.join(DEFAULT_DATA_DIR, 'vb_prediction_error_histogram.png')
+  filename = os.path.join(FLAGS.result_dir, 'vb_prediction_error_histogram.png')
   plt.savefig(filename)
 
   print(f'All done after {(time.time()-start_time)/60.0} minutes.')

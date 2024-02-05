@@ -191,7 +191,7 @@ behaved.
 
 | | Normal | Gamma |
 |----:|:----:|:---:|
-| VB Prediction Error (%) | XX | 1.88 |
+| VB Prediction Error (%) | 1.88 | 1.88 |
 
 Different models have different errors. We get better prediction errors
 if we include the monthly and yearly slope features. This is a histogram
