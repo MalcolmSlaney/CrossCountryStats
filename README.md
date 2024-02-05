@@ -149,7 +149,7 @@ This model predicts the following improvements:
 
 | | Monthly Improvement | Yearly Improvement |
 |----:|:----:|:---:|
-| Boys | 10.3s | 15.1s |
+| Boys | 10.5s | 15.2s |
 | Girls | 16.1s | 9.4s |
 
 [I don't know why the slopes are so different between boys and girls.  Perhaps
@@ -162,6 +162,7 @@ is much longer.
 
 ![Course Difficulty Distribution](Results/vb_map_course_difficulties.png)
 
+Our results are based o
 ### Ill Posed
 Note, the *raw* outputs from this model are unnormalized and should be considered
 *relative* results. 

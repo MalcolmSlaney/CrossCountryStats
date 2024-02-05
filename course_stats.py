@@ -805,94 +805,135 @@ def main(_):
     print('Not building girls model.')
 
   ##################### Plot all the (VB) results.  ####################
-  if FLAGS.genders in ('both', 'boys'):
-    plot_map_course_difficulties(
-        vb_map_estimate,
-        title = 'Histogram of VB Course Difficulties (MAP)',
-        filename = os.path.join(DEFAULT_DATA_DIR,
-                                'vb_map_course_difficulties.png'))
+  plot_map_course_difficulties(
+      vb_map_estimate,
+      title = 'Histogram of VB Course Difficulties (MAP)',
+      filename = os.path.join(DEFAULT_DATA_DIR,
+                              'vb_map_course_difficulties.png'))
 
-    vb_monthly_trace_means = plot_monthly_slope_predictions(
-        vb_model_trace,
-        title='Histogram of VB Monthly Slope Predictions',
-        filename=os.path.join(DEFAULT_DATA_DIR, 'vb_monthly_slope.png'))
+  vb_monthly_trace_means = plot_monthly_slope_predictions(
+      vb_model_trace,
+      title='Histogram of VB Monthly Slope Predictions',
+      filename=os.path.join(DEFAULT_DATA_DIR, 'vb_monthly_slope.png'))
 
-    vb_yearly_trace_means = plot_yearly_slope_predictions(
-        vb_model_trace,
-        title='Histogram of VB Yearly Slope Predictions',
-        filename=os.path.join(DEFAULT_DATA_DIR, 'vb_yearly_slope.png'))
+  vb_yearly_trace_means = plot_yearly_slope_predictions(
+      vb_model_trace,
+      title='Histogram of VB Yearly Slope Predictions',
+      filename=os.path.join(DEFAULT_DATA_DIR, 'vb_yearly_slope.png'))
 
-    vb_difficulty_trace_slopes = plot_map_trace_difficulty_comparison(
-        vb_map_estimate,
-        vb_model_trace,
-        title='Comparison of VB Course Difficulty Estimates',
+  vb_difficulty_trace_slopes = plot_map_trace_difficulty_comparison(
+      vb_map_estimate,
+      vb_model_trace,
+      title='Comparison of VB Course Difficulty Estimates',
+      filename=os.path.join(DEFAULT_DATA_DIR,
+                            'vb_course_difficulty_comparison.png'))
+
+  if vb_monthly_trace_means and vb_yearly_trace_means:
+    plot_year_month_difficulty_tradeoff(
+        vb_monthly_trace_means,
+        vb_yearly_trace_means,
+        vb_difficulty_trace_slopes,
+        title='Tradeoff between VB year/month and course difficulties',
         filename=os.path.join(DEFAULT_DATA_DIR,
-                              'vb_course_difficulty_comparison.png'))
+                              'vb_year_month_course_tradeoff.png'))
+    
+    # Plot number of races per (VB) runner.
+    print(vb_select.head())
+    boy_counts = vb_select.groupby(['runnerID']).size()
+    plt.clf()
+    plt.hist(boy_counts)
+    plt.xlabel('Number of Races')
+    plt.title('VB Race Counts per Runner')
+    filename = os.path.join(DEFAULT_DATA_DIR, 'vb_race_frequency_histogram.png')
+    plt.savefig(filename)
 
-    if vb_monthly_trace_means and vb_yearly_trace_means:
-      plot_year_month_difficulty_tradeoff(
-          vb_monthly_trace_means,
-          vb_yearly_trace_means,
-          vb_difficulty_trace_slopes,
-          title='Tradeoff between VB year/month and course difficulties',
-          filename=os.path.join(DEFAULT_DATA_DIR,
-                                'vb_year_month_course_tradeoff.png'))
-      
-      # Plot number of races per (VB) runner.
-      print(vb_select.head())
-      boy_counts = vb_select.groupby(['runnerID']).size()
-      plt.clf()
-      plt.hist(boy_counts, bins=20)
-      plt.xlabel('Number of Races')
-      plt.title('VB Race Counts per Runner')
-      filename = os.path.join(DEFAULT_DATA_DIR, 'vb_race_frequency_histogram.png')
-      plt.savefig(filename)
+  ##################### Plot all the (VG) results.  ####################
+  plot_map_course_difficulties(
+      vg_map_estimate,
+      title = 'Histogram of VG Course Difficulties (MAP)',
+      filename = os.path.join(DEFAULT_DATA_DIR,
+                              'vg_map_course_difficulties.png'))
 
-    # Create course difficulty summary tables
-    local_course_list = find_local_courses(vb_data)
-    scatter_df = create_result_frame(vb_data, vg_data,
-                                    vb_course_mapper, vg_course_mapper,
-                                    vb_model_trace, vg_model_trace,
-                                    local_course_list)
+  vg_monthly_trace_means = plot_monthly_slope_predictions(
+      vg_model_trace,
+      title='Histogram of VG Monthly Slope Predictions',
+      filename=os.path.join(DEFAULT_DATA_DIR, 'vg_monthly_slope.png'))
 
-    local_df = scatter_df[scatter_df['local_course']].sort_values('vb_difficulty')
-    table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
-    create_html_table(
-      local_df,
-      os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
+  vg_yearly_trace_means = plot_yearly_slope_predictions(
+      vg_model_trace,
+      title='Histogram of VG Yearly Slope Predictions',
+      filename=os.path.join(DEFAULT_DATA_DIR, 'vg_yearly_slope.png'))
+
+  vg_difficulty_trace_slopes = plot_map_trace_difficulty_comparison(
+      vg_map_estimate,
+      vg_model_trace,
+      title='Comparison of VG Course Difficulty Estimates',
+      filename=os.path.join(DEFAULT_DATA_DIR,
+                            'vg_course_difficulty_comparison.png'))
+
+  if vg_monthly_trace_means and vg_yearly_trace_means:
+    plot_year_month_difficulty_tradeoff(
+        vg_monthly_trace_means,
+        vg_yearly_trace_means,
+        vg_difficulty_trace_slopes,
+        title='Tradeoff between VG year/month and course difficulties',
+        filename=os.path.join(DEFAULT_DATA_DIR,
+                              'vg_year_month_course_tradeoff.png'))
+    
+    # Plot number of races per (VG) runner.
+    girl_counts = vb_select.groupby(['runnerID']).size()
+    plt.clf()
+    plt.hist(girl_counts)
+    plt.xlabel('Number of Races')
+    plt.title('VG Race Counts per Runner')
+    filename = os.path.join(DEFAULT_DATA_DIR, 'vg_race_frequency_histogram.png')
+    plt.savefig(filename)
+
+  ################## Create course difficulty summary tables ###################
+  local_course_list = find_local_courses(vb_data)
+  scatter_df = create_result_frame(vb_data, vg_data,
+                                  vb_course_mapper, vg_course_mapper,
+                                  vb_model_trace, vg_model_trace,
+                                  local_course_list)
+
+  local_df = scatter_df[scatter_df['local_course']].sort_values('vb_difficulty')
+  table_title = f'Bay Area Course Difficulties ({local_df.shape[0]} courses)'
+  create_html_table(
+    local_df,
+    os.path.join(FLAGS.data_dir, 'course_difficulties_local.html'),
+    title=table_title)
+
+  create_markdown_table(local_df)
+
+  table_title = ('California Course Difficulties '
+                f'({scatter_df.shape[0]} courses)')
+  create_html_table(
+      scatter_df.sort_values('vb_difficulty'),
+      os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
       title=table_title)
 
-    create_markdown_table(local_df)
+  filename=os.path.join(DEFAULT_DATA_DIR,
+                        'vb_vg_difficulties_comparison.html')
+  plot_difficulty_comparison(scatter_df, filename)
 
-    table_title = ('California Course Difficulties '
-                  f'({scatter_df.shape[0]} courses)')
-    create_html_table(
-        scatter_df.sort_values('vb_difficulty'),
-        os.path.join(FLAGS.data_dir, 'course_difficulties.html'),
-        title=table_title)
-
-    filename=os.path.join(DEFAULT_DATA_DIR,
-                          'vb_vg_difficulties_comparison.html')
-    plot_difficulty_comparison(scatter_df, filename)
-
-    ######################  Check prediction quality #####################
-    y_pred = pm.sample_posterior_predictive(vb_model_trace,
-                                            model=vb_xc_model)
-    observed = y_pred['observed_data']['y_like'].values
-    predictions = np.mean(y_pred['posterior_predictive']['y_like'].values, 
-                          axis=(0, 1))  # Average over chains and draws
-    y_error = (observed - predictions)/observed*100
-    y_error_std = np.std(y_error)
-    job_description = (f'{FLAGS.monthly_spec}/{FLAGS.yearly_spec}/' 
-                      f'{FLAGS.course_spec}/{FLAGS.runner_spec}')
-    print(f'\nStandard deviation of prediction errors is {y_error_std}% for '
-          f'{job_description}')
-    plt.clf()
-    plt.hist(y_error, bins=100)
-    plt.xlabel('Prediction Error (%)')
-    plt.title('VB Model Prediction Errors')
-    filename = os.path.join(DEFAULT_DATA_DIR, 'vb_prediction_error_histogram.png')
-    plt.savefig(filename)
+  ######################  Check prediction quality #####################
+  y_pred = pm.sample_posterior_predictive(vb_model_trace,
+                                          model=vb_xc_model)
+  observed = y_pred['observed_data']['y_like'].values
+  predictions = np.mean(y_pred['posterior_predictive']['y_like'].values, 
+                        axis=(0, 1))  # Average over chains and draws
+  y_error = (observed - predictions)/observed*100
+  y_error_std = np.std(y_error)
+  job_description = (f'{FLAGS.monthly_spec}/{FLAGS.yearly_spec}/' 
+                    f'{FLAGS.course_spec}/{FLAGS.runner_spec}')
+  print(f'\nStandard deviation of prediction errors is {y_error_std}% for '
+        f'{job_description}')
+  plt.clf()
+  plt.hist(y_error, bins=100)
+  plt.xlabel('Prediction Error (%)')
+  plt.title('VB Model Prediction Errors')
+  filename = os.path.join(DEFAULT_DATA_DIR, 'vb_prediction_error_histogram.png')
+  plt.savefig(filename)
 
   print(f'All done after {(time.time()-start_time)/60.0} minutes.')
 
