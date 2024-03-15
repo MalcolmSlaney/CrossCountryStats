@@ -101,7 +101,8 @@ Python package called [PyMC](https://www.pymc.io/welcome.html).
 
 The goal of this exercise is to estimate the relative difficulty of each course
 in our dataset. Here are the results for a number of courses run by local 
-high school teams (Palo Alto, Los Altos, Archbishop Mitty, and Lynbrook):
+high school teams (Palo Alto, Los Altos, Archbishop Mitty, and Lynbrook).
+The name of each course is followed by its distance in miles.
 
 |Index | Course Name                      | Boys Difficulty | Girls Difficulty | # Boys | # Girls |
 |-----:|---------------------------------:|----------------:|-----------------:|-------:|--------:|
