@@ -1,5 +1,5 @@
 # California Cross Country Course Difficulties
-By Malcolm Slaney  
+By Malcolm Slaney (malcolm@slaney.org)  
 September 2024
 
 ## Introduction

@@ -51,7 +51,7 @@ def save_model(filename, model, trace, map_estimate,
                     datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                   }
 
-  with open(full_filename ,'wb') as buff:
+  with open(full_filename, 'wb') as buff:
     cloudpickle.dump(dict_to_save, buff)
 
 
@@ -482,6 +482,7 @@ HTML_FOOTER = """
 
 # Note, for reasons I don't understand, at least one field in the table headers
 # must be non sortable.  I'm using local for that now.
+
 
 def create_html_table(race_data: pd.DataFrame,
                       filename: str,
