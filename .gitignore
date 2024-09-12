@@ -1,6 +1,6 @@
 **/pycache__
 **/.DS_Store
-Data/
+Data/*.csv
 **/*.pyc
 Cache*/*
 slurm*

@@ -18,17 +18,18 @@ class XCStatsTest(absltest.TestCase):
                                              yearly_improvement=20,
                                              use_runner=False, num_runners=20)
 
+    plt.clf()
     plt.plot(df.race_month.values, df.times.values, 'x')
     plt.xlabel('Months into season');
     plt.ylabel('Simulated course time (s)');
-
+    plt.title('Simulated Race Times over Four HS Years')
     # Each line is a different course.
     plt.savefig('Results/simulated_data_month_year.png')
     print('Finished savefig')
       
     # Build the model
-    xc_model = course_stats.create_xc_model(df, use_course=False, 
-                                            use_runner=False)
+    xc_model = course_stats.create_xc_model(df, course_spec=None, 
+                                            runner_spec=None)
     
     # Fit the model
     trace = pm.sample(model=xc_model)
@@ -53,20 +54,42 @@ class XCStatsTest(absltest.TestCase):
     course_difficulties,
     runner_abilities) = course_stats.generate_xc_data(noise=1, use_course=True, 
                                                       use_runner=False, 
+                                                      use_month=False,
                                                       use_year=False)
-    xc_model = course_stats.create_xc_model(df, use_runner=False, 
-                                            use_year=False)
+    plt.clf()
+    plt.subplot(1, 2, 1)
+    plt.plot(course_difficulties, '.')
+    plt.ylabel('Course Difficulty Factor');
+    plt.subplot(1, 2, 2)
+    plt.hist(runner_abilities)
+    plt.xlabel('Runner Time Factor')
+    plt.savefig('Results/simulated_data_month_course_factors.png')
 
-    model_trace = pm.sample(model=xc_model)
-    map_estimate = pm.find_MAP(model=xc_model)
+    xc_model = course_stats.create_xc_model(df, 
+                                            runner_spec=None, 
+                                            month_spec=None, year_spec=None,
+                                            course_spec='normal,1,0.1')
 
     plt.clf()
-    plt.plot(course_difficulties, map_estimate['course_est'], 'x');
+    pm.model_to_graphviz(xc_model).render('Results/simulated_data_month_course_graphviz')
+
+    model_trace = pm.sample(model=xc_model)
+    plt.clf()
+    pm.plot_trace(model_trace);
     plt.savefig('Results/simulated_data_month_course_trace.png')
-    print(f'MAP Course difficulties: {map_estimate["course_est"]}')
+  
+    map_estimate = pm.find_MAP(model=xc_model)
+    plt.clf()
+    plt.plot(course_difficulties, map_estimate['course_est'], 'x');
+    plt.xlabel('True Course Difficulty')
+    plt.ylabel('MAP Course Difficulty')
+    plt.title('Simulated Course Difficulty Result')
+    plt.savefig('Results/simulated_data_month_course_map.png')
+    print('test_month_course_model: MAP Course difficulties: '
+          f'{map_estimate["course_est"]}')
 
     d = np.mean(model_trace.posterior.course_est[1].values, axis=0)
-    print(f'Trace Course difficulties: {d}')
+    print(f'test_month_course_model: Trace Course difficulties: {d}')
 
     # Make sure MAP and trace mean agree.
     np.testing.assert_array_almost_equal(map_estimate['course_est'], d,
@@ -76,9 +99,18 @@ class XCStatsTest(absltest.TestCase):
                                          course_difficulties, decimal=1)
                                          
   def test_everything(self):
+    num_runners = 100
+    num_courses = 5
+    num_samples = 8000
     (df,
      course_difficulties,
-     runner_abilities) = course_stats.generate_xc_data(noise=10)
+     runner_abilities) = course_stats.generate_xc_data(noise=10, 
+                                                       n_samples=num_samples,
+                                                       num_courses=num_courses,
+                                                       num_runners=num_runners)
+    self.assertLen(course_difficulties, num_courses)
+    self.assertLen(runner_abilities, num_runners)
+    self.assertLen(df.runner_ids.values, num_samples)
     xc_model = course_stats.create_xc_model(df)
     map_estimate = pm.find_MAP(model=xc_model)
 
@@ -86,6 +118,7 @@ class XCStatsTest(absltest.TestCase):
     plt.plot(runner_abilities, map_estimate['runner_est'], 'x')
     plt.xlabel('Simulated Ground Truth')
     plt.ylabel('MAP Estimate')
+    plt.title('Runner Ability Synthetic Test Result')
     plt.savefig('Results/simulated_data_everything_runner_abilities.png')
 
   def test_all_plots(self):
@@ -96,7 +129,9 @@ class XCStatsTest(absltest.TestCase):
      runner_abilities) = course_stats.generate_xc_data(noise=10)
 
     xc_model, map_estimate, model_trace = course_stats.build_and_test_model(
-        df, chains=1, draws=100, tune=100)  # No tuning, just want to see plots.
+        df, monthly_spec='Normal,0,1', yearly_spec='Normal,0,1', 
+        course_spec='Normal,0,1', runner_spec='Normal,0,1',
+        chains=1, draws=100, tune=100)  # No tuning, just want to see plots.
 
     monthly_trace_means = course_stats.plot_monthly_slope_predictions(
         model_trace,

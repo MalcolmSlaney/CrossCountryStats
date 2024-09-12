@@ -14,6 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import pymc as pm
+import pytensor.tensor as pt
 import arviz as az
 
 # Our main plotting package (must have explicit import of submodules)
@@ -75,17 +76,25 @@ def load_model(
 ######################## Synthesize Data ##############################
 
 def generate_xc_data(n_samples: int = 4000,
-                     num_runners: int = 400,
+                     num_runners: int = 800,
                      num_courses: int = 5,
                      standard_time: float = 18*60, # seconds
                      monthly_improvement: float = 10, # Seconds
                      yearly_improvement: float = 20, # Seconds
                      noise: float = 10, # seconds
-                     use_month: bool = True,
-                     use_year: bool = True,
-                     use_course: bool = True,
-                     use_runner: bool = True,
+                     use_month: bool = True, # Include monthly improvement
+                     use_year: bool = True, # Include year-by-year improvement
+                     use_course: bool = True, # Vary course difficulties
+                     use_runner: bool = True, # Vary runner slowness
                      ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
+  """Generate some synthetic data to test our models.
+
+  Returns:
+    a tuple consisting of 
+    1) a Panda data frame, 
+    2) the underlying course difficulties (num_courses entries) and 
+    3) the underlying runner abilities (num_runners entries)
+  """
   race_month = np.random.uniform(0, 4, n_samples)
   runner_year = np.random.randint(0, 4, n_samples)
 
@@ -138,6 +147,7 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
 
     Args:
       name: The name of the variable with the given distribution.
+        Use None for skipping this distribution and returning a constant 1.0
       shape: The shape of the distribution, either an integer or a tuple
       definition: A distribution name, and optional parameters, comma separated.
         e.g. normal,0,1 means create a Normal distribution with mean 0 and 
@@ -147,9 +157,10 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
       Either 1.0 (for none or constant variables) or a PYMC distribution object.
     """
     if not definition:
+      print(f'Skipping the model for {name}.')
       return 1.0
     specs = definition.split(',')
-    print(f'Creating a model distribution for {definition}')
+    print(f'Creating a {name} distribution for {definition} with size {shape}')
     if specs[0].lower() == 'constant' or specs[0].lower() == 'none':
       return 1.0
     elif specs[0].lower() == 'normal':  
@@ -178,14 +189,16 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
       raise ValueError(f'Unknown model type: {definition}')
 
   mean_time = np.mean(data.times.values)
-  num_courses = len(set(data.course_ids.values))
-  num_runners = len(set(data.runner_ids.values))
+  num_courses = int(max(data.course_ids.values)) + 1
+  num_runners = int(max(data.runner_ids.values)) + 1
   print(f'Building a XC model for {num_runners} runners '
         f'running {num_courses} courses')
   # https://twiecki.io/blog/2014/03/17/bayesian-glms-3/
   with pm.Model() as a_model:
     # Intercept prior
-    bias = pm.Normal('bias', mu=mean_time, sigma=100)
+    sigma_time = 100
+    print(f'Creating a N({mean_time}, {sigma_time}) distribution for the bias.')
+    bias = pm.Normal('bias', mu=mean_time, sigma=sigma_time)
     monthly_slope = make_model('monthly_slope', 1, month_spec)
     yearly_slope = make_model('yearly_slope', 1, year_spec)
     course_est = make_model('course_est', num_courses, course_spec)
@@ -196,10 +209,14 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
 
     # Now put it all together to match the time predictions.
     time_est = bias
-    time_est -= monthly_slope * data.race_month.values
-    time_est -= yearly_slope * data.runner_year.values
-    time_est *= course_est[data.course_ids.values]  # pylint: disable=unsubscriptable-object
-    time_est *= runner_est[data.runner_ids.values]  # pylint: disable=unsubscriptable-object
+    if isinstance(monthly_slope, pt.variable.TensorVariable):
+      time_est -= monthly_slope * data.race_month.values
+    if isinstance(yearly_slope, pt.variable.TensorVariable):
+      time_est -= yearly_slope * data.runner_year.values
+    if isinstance(course_est, pt.variable.TensorVariable):
+      time_est *= course_est[data.course_ids.values]  # pylint: disable=unsubscriptable-object
+    if isinstance(runner_est, pt.variable.TensorVariable):
+      time_est *= runner_est[data.runner_ids.values]  # pylint: disable=unsubscriptable-object
 
     # Data likelihood
     pm.Normal('y_like', mu=time_est, sigma=eps, observed=data.times.values)
@@ -504,6 +521,17 @@ def get_course_distance(name_and_dist: str) -> str:
   pieces = name_and_dist.rsplit(' ', 1)
   return pieces[0], float(pieces[1][1:-1])
 
+def create_hank_correction_list(race_data: pd.DataFrame, filename: str):
+  """Create the HTML table that Hank Lawson needs for the Lynbrook course
+  timing calculator.
+    https://lynbrooksports.prepcaltrack.com/ATHLETICS/XC/CONVERTR/converter2007.html
+  """
+  with open(filename, 'w', encoding="utf-8") as file_pointer:
+    for _, row in race_data.iterrows():
+      difficulty = (row["vb_difficulty"] + row["vg_difficulty"])/2.0
+      print(f'<option value="{difficulty:2.4f}">{row["course_name"]}</option>',
+            file=file_pointer)
+
 
 ################## Plotting Routines ########################
 
@@ -710,9 +738,9 @@ def plot_difficulty_comparison(scatter_df: pd.DataFrame,
 ################## Main Program ########################
 
 FLAGS = flags.FLAGS
-flags.DEFINE_integer('chains', 2, 'Number of MCMC chains to explore',
+flags.DEFINE_integer('chains', 36, 'Number of MCMC chains to explore',
                      lower_bound=1)
-flags.DEFINE_integer('draws', 1000, 'Number of draws to make when sampling',
+flags.DEFINE_integer('draws', 2000, 'Number of draws to make when sampling',
                      lower_bound=1)
 flags.DEFINE_string('data_dir', DEFAULT_DATA_DIR,
                     'Where to find the raw data (course, runner, date, time).')
@@ -918,6 +946,8 @@ def main(_):
   filename=os.path.join(FLAGS.result_dir,
                         'vb_vg_difficulties_comparison.html')
   plot_difficulty_comparison(scatter_df, filename)
+
+  create_hank_correction_list(scatter_df, 'hank_corrections.txt')
 
   ######################  Check prediction quality #####################
   y_pred = pm.sample_posterior_predictive(vb_model_trace,
