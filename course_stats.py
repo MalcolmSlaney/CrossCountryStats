@@ -773,6 +773,7 @@ def print_flags(filename: str):
 def main(_):
   start_time = time.time()
   print(f'Have {os.cpu_count()} CPUs available for this job.')
+  os.makedirs(FLAGS.result_dir, exist_ok=True)
   if FLAGS.flag_filename:
     print_flags(os.path.join(FLAGS.result_dir, FLAGS.flag_filename))
 
@@ -846,7 +847,6 @@ def main(_):
     print('Not building girls model.')
 
   ##################### Plot all the (VB) results.  ####################
-  os.makedirs(FLAGS.result_dir, exist_ok=True)
   plot_map_course_difficulties(
       vb_map_estimate,
       title = 'Histogram of VB Course Difficulties (MAP)',
