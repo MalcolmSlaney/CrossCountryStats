@@ -34,7 +34,7 @@ class XCStatsTest(absltest.TestCase):
     # Fit the model
     trace = pm.sample(model=xc_model)
     plt.clf()
-    pm.plot_trace(trace);
+    pm.plot_trace(trace)
     plt.savefig('Results/simulated_data_month_year_trace.png')
 
     # Test the MAP parameters
@@ -58,7 +58,7 @@ class XCStatsTest(absltest.TestCase):
     plt.clf()
     plt.subplot(1, 2, 1)
     plt.plot(course_difficulties, '.')
-    plt.ylabel('Course Difficulty Factor');
+    plt.ylabel('Course Difficulty Factor')
     plt.subplot(1, 2, 2)
     plt.hist(runner_abilities)
     plt.xlabel('Runner Time Factor')
@@ -77,12 +77,12 @@ class XCStatsTest(absltest.TestCase):
 
     model_trace = pm.sample(model=xc_model)
     plt.clf()
-    pm.plot_trace(model_trace);
+    pm.plot_trace(model_trace)
     plt.savefig('Results/simulated_data_month_course_trace.png')
 
     map_estimate = pm.find_MAP(model=xc_model)
     plt.clf()
-    plt.plot(course_difficulties, map_estimate['course_est'], 'x');
+    plt.plot(course_difficulties, map_estimate['course_est'], 'x')
     plt.xlabel('True Course Difficulty')
     plt.ylabel('MAP Course Difficulty')
     plt.title('Simulated Course Difficulty Result')

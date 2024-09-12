@@ -51,7 +51,7 @@ def save_model(filename, model, trace, map_estimate,
                     datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                   }
 
-  with open(full_filename , 'wb') as buff:
+  with open(full_filename ,'wb') as buff:
     cloudpickle.dump(dict_to_save, buff)
 
 
@@ -64,7 +64,7 @@ def load_model(
     full_filename = filename
   else:
     full_filename = os.path.join(default_dir, filename)
-  with open(full_filename , 'rb') as buff:
+  with open(full_filename, 'rb') as buff:
     model_dict = cloudpickle.load(buff)
     if datetime in model_dict:
       print(f'Restoring data stored at {model_dict["datetime"]}')
@@ -126,7 +126,8 @@ def generate_xc_data(n_samples: int = 4000,
                               'times': times})
   return new_df, course_difficulties, runner_abilities
 
-def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
+
+def create_xc_model(data: pd.DataFrame,  # pylint: disable=too-many-locals
                     month_spec: Optional[str] = 'normal,0,100',
                     year_spec: Optional[str] = 'normal,0,100',
                     course_spec: Optional[str] = 'normal,1,1',
@@ -230,15 +231,18 @@ def parse_date(date_string: str) -> datetime.datetime:
   """Parse the XCStats date format."""
   return datetime.datetime.strptime(date_string, '%m/%d/%Y')
 
+
 def extract_month(date, starting_month=0):
   """Get the race month as a number.  Starting_month allows us to start counting
   from September (9).  Return an integer (generally between 0 and 3)
   """
   return parse_date(date).month - starting_month
 
+
 def extract_year(date):
   """Return the year of the race as an integer."""
   return parse_date(date).year
+
 
 def import_xcstats(
     csv_file: str,
@@ -276,6 +280,7 @@ def import_xcstats(
   data_with_dates = pd.concat((data, race_data), axis=1)
   return data_with_dates
 
+
 def transform_ids(data: pd.DataFrame,
                   column_name: str) -> Tuple[pd.Series, Dict[Any, int]]:
   """Go through all the indicated column data and generate a mapping from
@@ -286,6 +291,7 @@ def transform_ids(data: pd.DataFrame,
   mapping_dictionary = dict(zip(original_ids, range(len(original_ids))))
   # print(mapping_dictionary)
   return data[column_name].map(mapping_dictionary), mapping_dictionary
+
 
 def prepare_xc_data(data: pd.DataFrame,
                     school_id: Optional[int] = None,
@@ -360,7 +366,7 @@ def create_result_frame(
     vb_model_trace, vg_model_trace,
     local_course_list=(),
     vb_map_estimate=None, vg_map_estimate=None,
-    use_map = False, normalize_to_crystal=True):
+    use_map=False, normalize_to_crystal=True):
   if use_map:
     vb_course_est = vb_map_estimate['course_est']
     vg_course_est = vg_map_estimate['course_est']
@@ -507,11 +513,12 @@ def find_common_courses(vb_course_mapper, vg_course_mapper):
 
 
 # Extract the course names where our local schools run, for easier debugging.
-LOCAL_SCHOOLS = (830, # Palo Alto
-                 950, # Los Altos
-                 1, # Archbishop Mitty
-                 10, # Lynbrook
+LOCAL_SCHOOLS = (830,  # Palo Alto
+                 950,  # Los Altos
+                 1,  # Archbishop Mitty
+                 10,  # Lynbrook
 )
+
 
 def find_local_courses(pd_data: pd.DataFrame,
                        local_schools: List[int] = LOCAL_SCHOOLS):
@@ -738,6 +745,7 @@ def plot_difficulty_comparison(scatter_df: pd.DataFrame,
 
   return my_plot
 
+
 ################## Main Program ########################
 
 FLAGS = flags.FLAGS
@@ -767,6 +775,7 @@ flags.DEFINE_enum('genders', 'both', ['boys', 'girls', 'both'],
                   'Which genders to train and test.')
 flags.DEFINE_string('flag_filename', 'flag_values.txt',
                     'Where to store a record of the flags used for this test')
+
 
 def print_flags(filename: str):
   with open(filename, 'w') as fp:
@@ -858,9 +867,9 @@ def main(_):
   ##################### Plot all the (VB) results.  ####################
   plot_map_course_difficulties(
       vb_map_estimate,
-      title = 'Histogram of VB Course Difficulties (MAP)',
-      filename = os.path.join(FLAGS.result_dir,
-                              'vb_map_course_difficulties.png'))
+      title='Histogram of VB Course Difficulties (MAP)',
+      filename=os.path.join(FLAGS.result_dir,
+                            'vb_map_course_difficulties.png'))
 
   vb_monthly_trace_means = plot_monthly_slope_predictions(
       vb_model_trace,
@@ -901,9 +910,9 @@ def main(_):
   ##################### Plot all the (VG) results.  ####################
   plot_map_course_difficulties(
       vg_map_estimate,
-      title = 'Histogram of VG Course Difficulties (MAP)',
-      filename = os.path.join(FLAGS.result_dir,
-                              'vg_map_course_difficulties.png'))
+      title='Histogram of VG Course Difficulties (MAP)',
+      filename=os.path.join(FLAGS.result_dir,
+                            'vg_map_course_difficulties.png'))
 
   vg_monthly_trace_means = plot_monthly_slope_predictions(
       vg_model_trace,
@@ -963,8 +972,8 @@ def main(_):
       os.path.join(FLAGS.result_dir, 'course_difficulties.html'),
       title=table_title)
 
-  filename=os.path.join(FLAGS.result_dir,
-                        'vb_vg_difficulties_comparison.html')
+  filename = os.path.join(FLAGS.result_dir,
+                          'vb_vg_difficulties_comparison.html')
   plot_difficulty_comparison(scatter_df, filename)
 
   create_hank_correction_list(scatter_df,
@@ -991,6 +1000,7 @@ def main(_):
   plt.savefig(filename)
 
   print(f'All done after {(time.time()-start_time)/60.0} minutes.')
+
 
 if __name__ == '__main__':
   app.run(main)
