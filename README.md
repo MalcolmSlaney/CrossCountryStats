@@ -22,6 +22,21 @@ that course's difficulty factor,
 thus giving you an estimate of their Crystal time, 
 then *muliply* by the difficulty of the course that you care about.
 
+## The Mathematical Model
+This task would be easy if we had runners who competed on all courses.
+But we do not.  Instead we have Kent who has run courses A and B, and we
+have Donald who has run courses B and C. Since we have times for both runners
+on course B, we can calculate the difference between these two runners, and 
+thus estimate the difficulty of courses A and C. 
+It could be a bit of an algebra problem.
+In the boys case we have 70696 equations (race results) with
+3919 boy variables (their abilities) 
+and 443 course variables (their difficulties).
+We can solve this problem using algebra, but it's better to use Bayesian 
+modeling so we can add probabilistic information to the solution.
+This includes assumptions such as runner's
+performance will roughly fit a Normal distribution.
+
 Using race results from [XCStats](https://xcstats.com/)
 over multiple years,
 this code builds a model that takes into account these different factors:
