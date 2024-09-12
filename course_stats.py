@@ -21,12 +21,13 @@ import arviz as az
 import bokeh.io
 import bokeh.plotting
 
-## Data and Model Code
+######################## Data and Model Code ##############################
 
 DEFAULT_DATA_DIR = 'Data'
 DEFAULT_CACHE_DIR = 'Cache'
 
 # https://discourse.pymc.io/t/how-save-pymc-v5-models/13022
+
 
 # pylint: disable=too-many-arguments # Do this globally, funtions are complex.
 # pylint: disable=too-many-locals
@@ -78,21 +79,21 @@ def load_model(
 def generate_xc_data(n_samples: int = 4000,
                      num_runners: int = 800,
                      num_courses: int = 5,
-                     standard_time: float = 18*60, # seconds
-                     monthly_improvement: float = 10, # Seconds
-                     yearly_improvement: float = 20, # Seconds
-                     noise: float = 10, # seconds
-                     use_month: bool = True, # Include monthly improvement
-                     use_year: bool = True, # Include year-by-year improvement
-                     use_course: bool = True, # Vary course difficulties
-                     use_runner: bool = True, # Vary runner slowness
+                     standard_time: float = 18*60,  # seconds
+                     monthly_improvement: float = 10,  # Seconds
+                     yearly_improvement: float = 20,  # Seconds
+                     noise: float = 10,  # seconds
+                     use_month: bool = True,  # Include monthly improvement
+                     use_year: bool = True,  # Include year-by-year improvement
+                     use_course: bool = True,  # Vary course difficulties
+                     use_runner: bool = True,  # Vary runner slowness
                      ) -> Tuple[pd.DataFrame, np.ndarray, np.ndarray]:
   """Generate some synthetic data to test our models.
 
   Returns:
-    a tuple consisting of 
-    1) a Panda data frame, 
-    2) the underlying course difficulties (num_courses entries) and 
+    a tuple consisting of
+    1) a Panda data frame,
+    2) the underlying course difficulties (num_courses entries) and
     3) the underlying runner abilities (num_runners entries)
   """
   race_month = np.random.uniform(0, 4, n_samples)
@@ -140,7 +141,7 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
     course_ids (which course is run, a small integer)
     runner_ids (a small integer)
   """
-  def make_model(name: str, 
+  def make_model(name: str,
                  shape: Union[int, Tuple[int]],
                  definition: Optional[str]) -> Union[float, pm.Distribution]:
     """Given a distribution spec, create the PYMC object that implements it.
@@ -150,7 +151,7 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
         Use None for skipping this distribution and returning a constant 1.0
       shape: The shape of the distribution, either an integer or a tuple
       definition: A distribution name, and optional parameters, comma separated.
-        e.g. normal,0,1 means create a Normal distribution with mean 0 and 
+        e.g. normal,0,1 means create a Normal distribution with mean 0 and
         sigma 1.
 
     Returns:
@@ -163,7 +164,7 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
     print(f'Creating a {name} distribution for {definition} with size {shape}')
     if specs[0].lower() == 'constant' or specs[0].lower() == 'none':
       return 1.0
-    elif specs[0].lower() == 'normal':  
+    elif specs[0].lower() == 'normal':
       if len(specs) > 1:
         mean = float(specs[1])
       else:
@@ -173,7 +174,7 @@ def create_xc_model(data: pd.DataFrame, # pylint: disable=too-many-locals
       else:
         sigma = 1
       return pm.Normal(name, mu=mean, sigma=sigma, shape=shape)
-    elif specs[0].lower() == 'gamma':  
+    elif specs[0].lower() == 'gamma':
       # https://www.pymc.io/projects/docs/en/stable/api/distributions/generated/pymc.Gamma.html#pymc.Gamma
       if len(specs) > 1:
         mean = float(specs[1])
@@ -366,9 +367,9 @@ def create_result_frame(
   else:
     # Average the posterior for course_est over all traces and all samples.
     vb_course_est = np.mean(vb_model_trace.posterior.course_est.values,
-                            axis=(0,1))
+                            axis=(0, 1))
     vg_course_est = np.mean(vg_model_trace.posterior.course_est.values,
-                            axis=(0,1))
+                            axis=(0, 1))
 
   common_courses = find_common_courses(vb_course_mapper, vg_course_mapper)
 
@@ -402,12 +403,12 @@ def create_result_frame(
     vg_difficulties = np.asarray(vg_difficulties)/vg_norm
 
   scatter_df = pd.DataFrame({'vg_difficulty': vg_difficulties,
-                            'vb_difficulty': vb_difficulties,
-                            'course_name': common_courses,
-                            'course_distances': course_distances,
-                            'boys_runner_count': boys_runner_count,
-                            'girls_runner_count': girls_runner_count,
-                            'local_course': local_course,
+                             'vb_difficulty': vb_difficulties,
+                             'course_name': common_courses,
+                             'course_distances': course_distances,
+                             'boys_runner_count': boys_runner_count,
+                             'girls_runner_count': girls_runner_count,
+                             'local_course': local_course,
                             })
   return scatter_df
 
@@ -517,9 +518,11 @@ def find_local_courses(pd_data: pd.DataFrame,
   local_courses = pd_data.loc[pd_data['schoolID'].isin(local_schools)]
   return local_courses.courseName.unique()
 
+
 def get_course_distance(name_and_dist: str) -> str:
   pieces = name_and_dist.rsplit(' ', 1)
   return pieces[0], float(pieces[1][1:-1])
+
 
 def create_hank_correction_list(race_data: pd.DataFrame, filename: str):
   """Create the HTML table that Hank Lawson needs for the Lynbrook course
@@ -643,7 +646,7 @@ def plot_map_trace_difficulty_comparison(
     map_estimate,
     model_trace: az.InferenceData,
     title: str = 'Comparison of Course Difficult Estimates',
-    difficulty_limit:float = 2.2,  # Drop Spooner since it's way long.
+    difficulty_limit: float = 2.2,  # Drop Spooner since it's way long.
     filename: Optional[str] = None) -> List[np.ndarray]:
   if 'course_est' not in model_trace.posterior:
     return
@@ -752,26 +755,26 @@ flags.DEFINE_bool('use_cached_model', True,
                   'Use the precomputed (cached) model')
 flags.DEFINE_integer('seed', -1, 'Initial random seed for entire program.'
                      'A megative value means do not initialze.')
-flags.DEFINE_string('monthly_spec', 'normal,0,100', 
+flags.DEFINE_string('monthly_spec', 'normal,0,100',
                     'Model and params for the monthly model')
-flags.DEFINE_string('yearly_spec', 'normal,0,100', 
+flags.DEFINE_string('yearly_spec', 'normal,0,100',
                     'Model and params for the yearly model')
-flags.DEFINE_string('course_spec', 'normal,1,1', 
+flags.DEFINE_string('course_spec', 'normal,1,1',
                     'Model and params for the course model')
-flags.DEFINE_string('runner_spec', 'normal,1,1', 
+flags.DEFINE_string('runner_spec', 'normal,1,1',
                     'Model and params for the runner model')
 flags.DEFINE_enum('genders', 'both', ['boys', 'girls', 'both'],
                   'Which genders to train and test.')
-flags.DEFINE_string('flag_filename', 'flag_values.txt', 
+flags.DEFINE_string('flag_filename', 'flag_values.txt',
                     'Where to store a record of the flags used for this test')
 
 def print_flags(filename: str):
   with open(filename, 'w') as fp:
     flag_dict = flags.FLAGS.flag_values_dict()
-    for k,v in flag_dict.items():
+    for k, v in flag_dict.items():
       fp.write(f'{k}: {v}\n')
 
-    
+
 def main(_):
   start_time = time.time()
   print(f'Have {os.cpu_count()} CPUs available for this job.')
@@ -782,7 +785,7 @@ def main(_):
   if FLAGS.seed >= 0:
     # https://discourse.pymc.io/t/how-to-set-a-seed-for-pm-sample/11497
     rng = np.random.default_rng(FLAGS.seed)
-  else: 
+  else:
     rng = None
   vb_data = import_xcstats('boys_v2.csv')
   vg_data = import_xcstats('girls_v2.csv')
@@ -806,8 +809,8 @@ def main(_):
           place_fraction=top_runner_percent/100.0)
       print('\nBuilding boys model...')
       vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
-        vb_select, FLAGS.monthly_spec, FLAGS.yearly_spec, 
-        FLAGS.course_spec, FLAGS.runner_spec, chains=FLAGS.chains, 
+        vb_select, FLAGS.monthly_spec, FLAGS.yearly_spec,
+        FLAGS.course_spec, FLAGS.runner_spec, chains=FLAGS.chains,
         draws=FLAGS.draws, seed=rng)
       if FLAGS.cache_dir:
         os.makedirs(FLAGS.cache_dir, exist_ok=True)
@@ -836,8 +839,8 @@ def main(_):
           place_fraction=top_runner_percent/100.0)
       print('\nBuilding girls model...')
       vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
-        vg_select, FLAGS.monthly_spec, FLAGS.yearly_spec, 
-        FLAGS.course_spec, FLAGS.runner_spec, chains=FLAGS.chains, 
+        vg_select, FLAGS.monthly_spec, FLAGS.yearly_spec,
+        FLAGS.course_spec, FLAGS.runner_spec, chains=FLAGS.chains,
         draws=FLAGS.draws, seed=rng)
       if FLAGS.cache_dir:
         os.makedirs(FLAGS.cache_dir, exist_ok=True)
@@ -884,7 +887,7 @@ def main(_):
         title='Tradeoff between VB year/month and course difficulties',
         filename=os.path.join(FLAGS.result_dir,
                               'vb_year_month_course_tradeoff.png'))
-    
+
     # Plot number of races per (VB) runner.
     print(vb_select.head())
     boy_counts = vb_select.groupby(['runnerID']).size()
@@ -927,7 +930,7 @@ def main(_):
         title='Tradeoff between VG year/month and course difficulties',
         filename=os.path.join(FLAGS.result_dir,
                               'vg_year_month_course_tradeoff.png'))
-    
+
     # Plot number of races per (VG) runner.
     girl_counts = vb_select.groupby(['runnerID']).size()
     plt.clf()
@@ -964,7 +967,7 @@ def main(_):
                         'vb_vg_difficulties_comparison.html')
   plot_difficulty_comparison(scatter_df, filename)
 
-  create_hank_correction_list(scatter_df, 
+  create_hank_correction_list(scatter_df,
                               os.path.join(FLAGS.result_dir,
                                            'hank_corrections.txt'))
 
@@ -972,11 +975,11 @@ def main(_):
   y_pred = pm.sample_posterior_predictive(vb_model_trace,
                                           model=vb_xc_model)
   observed = y_pred['observed_data']['y_like'].values
-  predictions = np.mean(y_pred['posterior_predictive']['y_like'].values, 
+  predictions = np.mean(y_pred['posterior_predictive']['y_like'].values,
                         axis=(0, 1))  # Average over chains and draws
   y_error = (observed - predictions)/observed*100
   y_error_std = np.std(y_error)
-  job_description = (f'{FLAGS.monthly_spec}/{FLAGS.yearly_spec}/' 
+  job_description = (f'{FLAGS.monthly_spec}/{FLAGS.yearly_spec}/'
                     f'{FLAGS.course_spec}/{FLAGS.runner_spec}')
   print(f'\nStandard deviation of prediction errors is {y_error_std}% for '
         f'{job_description}')
