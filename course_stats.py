@@ -773,7 +773,7 @@ def main(_):
   vb_data = import_xcstats('boys_v2.csv')
   vg_data = import_xcstats('girls_v2.csv')
   print(f'Read in {vb_data.shape[0]} boys and '
-        f'{vb_data.shape[0]} girls results')
+        f'{vg_data.shape[0]} girls results')
 
   # Work with the top 25% of results for now.
   top_runner_percent = 25
