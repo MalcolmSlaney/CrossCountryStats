@@ -1,6 +1,7 @@
-**/pycache__
+**/__pycache__
 **/.DS_Store
 Data/*.csv
 **/*.pyc
 Cache*/*
 slurm*
+run*.sbatch
