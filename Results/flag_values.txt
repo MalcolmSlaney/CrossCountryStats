@@ -18,6 +18,7 @@ draws: 2000
 data_dir: Data
 result_dir: Results.gamma
 cache_dir: Cache.gamma
+use_cached_model: False
 seed: 42
 monthly_spec: gamma,10,10
 yearly_spec: gamma,10,10

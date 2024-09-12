@@ -28,14 +28,13 @@ But we do not.  Instead we have Kent who has run courses A and B, and we
 have Donald who has run courses B and C. Since we have times for both runners
 on course B, we can calculate the difference between these two runners, and 
 thus estimate the difficulty of courses A and C. 
-It could be a bit of an algebra problem.
-In the boys case we have 70696 equations (race results) with
+For the boys we have 70696 equations (race results) with
 3919 boy variables (their abilities) 
 and 443 course variables (their difficulties).
 We can solve this problem using algebra, but it's better to use Bayesian 
 modeling so we can add probabilistic information to the solution.
-This includes assumptions such as runner's
-performance will roughly fit a Normal distribution.
+This includes assumptions such as the distribution of runner's
+performance will be roughly a Gaussian.
 
 Using race results from [XCStats](https://xcstats.com/)
 over multiple years,
