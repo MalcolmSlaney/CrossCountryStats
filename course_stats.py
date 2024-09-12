@@ -760,10 +760,21 @@ flags.DEFINE_string('runner_spec', 'normal,1,1',
                     'Model and params for the runner model')
 flags.DEFINE_enum('genders', 'both', ['boys', 'girls', 'both'],
                   'Which genders to train and test.')
+flags.DEFINE_string('flag_filename', 'flag_values.txt', 
+                    'Where to store a record of the flags used for this test')
 
+def print_flags(filename: str):
+  with open(filename, 'w') as fp:
+    flag_dict = flags.FLAGS.flag_values_dict()
+    for k,v in flag_dict.items():
+      fp.write(f'{k}: {v}\n')
+
+    
 def main(_):
   start_time = time.time()
   print(f'Have {os.cpu_count()} CPUs available for this job.')
+  if FLAGS.flag_filename:
+    print_flags(os.path.join(FLAGS.result_dir, FLAGS.flag_filename))
 
   if FLAGS.seed >= 0:
     # https://discourse.pymc.io/t/how-to-set-a-seed-for-pm-sample/11497
