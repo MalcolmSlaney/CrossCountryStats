@@ -819,7 +819,7 @@ def main(_):
     print(vb_map_estimate)
   else:
     print('Not building boys model.')
-  print(f'Boys model has {len(vb_runner_mapper)} and '
+  print(f'Boys model has {len(vb_runner_mapper)} runners and '
         f'{len(vb_course_mapper)} courses.')
 
   if FLAGS.genders in ('both', 'girls'):
@@ -849,6 +849,8 @@ def main(_):
     print(vg_map_estimate)
   else:
     print('Not building girls model.')
+  print(f'Girls model has {len(vg_runner_mapper)} runners and '
+        f'{len(vg_course_mapper)} courses.')
 
   ##################### Plot all the (VB) results.  ####################
   plot_map_course_difficulties(
