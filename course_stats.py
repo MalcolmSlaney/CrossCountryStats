@@ -964,7 +964,9 @@ def main(_):
                         'vb_vg_difficulties_comparison.html')
   plot_difficulty_comparison(scatter_df, filename)
 
-  create_hank_correction_list(scatter_df, 'hank_corrections.txt')
+  create_hank_correction_list(scatter_df, 
+                              os.path.join(FLAGS.result_dir,
+                                           'hank_corrections.txt'))
 
   ######################  Check prediction quality #####################
   y_pred = pm.sample_posterior_predictive(vb_model_trace,
