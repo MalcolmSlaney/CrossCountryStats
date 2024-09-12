@@ -1,5 +1,9 @@
+# California Cross Country Course Difficulties
+By Malcolm Slaney  
+September 2024
+
 ## Introduction
-This code estimates the difficulty of California cross country (XC) courses. 
+This page estimates the difficulty of California cross country (XC) courses. 
 The goal is to provide a single number that models each course's difficulty 
 and can be used to adjust expected race times across courses.
 For example, course A might be 1.1 times harder than course B,
