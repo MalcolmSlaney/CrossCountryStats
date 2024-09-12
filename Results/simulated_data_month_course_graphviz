@@ -1,10 +1,10 @@
 digraph {
-	eps [label="eps
-~
-HalfCauchy" shape=ellipse]
 	bias [label="bias
 ~
 Normal" shape=ellipse]
+	eps [label="eps
+~
+HalfCauchy" shape=ellipse]
 	subgraph cluster5 {
 		course_est [label="course_est
 ~
@@ -17,7 +17,7 @@ Normal" shape=ellipse]
 Normal" shape=ellipse style=filled]
 		label=4000 labeljust=r labelloc=b style=rounded
 	}
-	course_est -> y_like
-	eps -> y_like
 	bias -> y_like
+	eps -> y_like
+	course_est -> y_like
 }

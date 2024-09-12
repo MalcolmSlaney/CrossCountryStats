@@ -748,6 +748,8 @@ flags.DEFINE_string('result_dir', DEFAULT_DATA_DIR,
                     'Where to store the plots we generate.')
 flags.DEFINE_string('cache_dir', '',
                     'Where to cache the analysis results.')
+flags.DEFINE_bool('use_cached_model', True,
+                  'Use the precomputed (cached) model')
 flags.DEFINE_integer('seed', -1, 'Initial random seed for entire program.'
                      'A megative value means do not initialze.')
 flags.DEFINE_string('monthly_spec', 'normal,0,100', 
@@ -792,8 +794,8 @@ def main(_):
 
   if FLAGS.genders in ('both', 'boys'):
     cache_file = os.path.join(FLAGS.cache_dir, 'vb_analysis.pickle')
-    if FLAGS.cache_dir and os.path.exists(cache_file):
-      print('\nLoading boys model')
+    if FLAGS.use_cached_model and FLAGS.cache_dir and os.path.exists(cache_file):
+      print('\nLoading boys model from cache')
       (vb_xc_model, vb_model_trace,
       top_runner_percent, vb_select,
       vb_course_mapper, vb_runner_mapper,
@@ -817,11 +819,13 @@ def main(_):
     print(vb_map_estimate)
   else:
     print('Not building boys model.')
+  print(f'Boys model has {len(vb_runner_mapper)} and '
+        f'{len(vb_course_mapper)} courses.')
 
   if FLAGS.genders in ('both', 'girls'):
     cache_file = os.path.join(FLAGS.cache_dir, 'vg_analysis.pickle')
-    if FLAGS.cache_dir and os.path.exists(cache_file):
-      print('\nLoading girls model')
+    if FLAGS.use_cached_model and FLAGS.cache_dir and os.path.exists(cache_file):
+      print('\nLoading girls model from cache')
       (vg_xc_model, vg_model_trace,
       top_runner_percent, vg_select,
       vg_course_mapper, vg_runner_mapper,
