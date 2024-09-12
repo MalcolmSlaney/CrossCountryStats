@@ -70,9 +70,12 @@ class XCStatsTest(absltest.TestCase):
                                             month_spec=None, year_spec=None,
                                             course_spec='normal,1,0.1')
 
-    plt.clf()
-    pm.model_to_graphviz(xc_model).render('Results/simulated_data_month_course_graphviz')
-
+    try:
+      plt.clf()
+      pm.model_to_graphviz(xc_model).render('Results/simulated_data_month_course_graphviz')
+    except:
+      print('Cannot run graphviz to visualize the Bayesian model.')
+      
     model_trace = pm.sample(model=xc_model)
     plt.clf()
     pm.plot_trace(model_trace);
