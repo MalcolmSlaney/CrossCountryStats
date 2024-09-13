@@ -26,6 +26,10 @@ that course's difficulty factor,
 thus giving you an estimate of their Crystal time, 
 then *muliply* by the difficulty of the course that you care about.
 
+We use multiple years of race results from [XCStats](https://xcstats.com/).
+Their data was essential for this analysis as they track performance 
+based on the individual course, not just distance.
+
 ## The Mathematical Model
 This task would be easy if we had runners who competed on all courses.
 But we do not.  Instead we have Kent who has run courses A and B, and we
@@ -38,11 +42,9 @@ and 443 course variables (their difficulties).
 We can solve this problem using algebra, but it's better to use Bayesian 
 modeling so we can add probabilistic information to the solution.
 This includes assumptions such as the distribution of runner's
-performance will be roughly a Gaussian.
+performance will be roughly Gaussian.
 
-Using race results from [XCStats](https://xcstats.com/)
-over multiple years,
-this code builds a model that takes into account these different factors:
+This code builds a model that takes into account these different factors:
 
   * Course difficulty
   * Runner's inate ability
