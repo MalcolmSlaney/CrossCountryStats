@@ -229,7 +229,11 @@ def create_xc_model(data: pd.DataFrame,  # pylint: disable=too-many-locals
 
 def parse_date(date_string: str) -> datetime.datetime:
   """Parse the XCStats date format."""
-  return datetime.datetime.strptime(date_string, '%m/%d/%Y')
+  try:
+    return datetime.datetime.strptime(date_string, '%m/%d/%Y')
+  except ValueError:
+    # Now look for a two-digit year.
+    return datetime.datetime.strptime(date_string, '%m/%d/%y')
 
 
 def extract_month(date, starting_month=0):
@@ -776,6 +780,10 @@ flags.DEFINE_enum('genders', 'both', ['boys', 'girls', 'both'],
                   'Which genders to train and test.')
 flags.DEFINE_string('flag_filename', 'flag_values.txt',
                     'Where to store a record of the flags used for this test')
+flags.DEFINE_string('boys_data', 'boys_v2.csv', 
+                    'Where to read the race results for the boys.')
+flags.DEFINE_string('girls_data', 'girls_v2.csv', 
+                    'Where to read the race results for the girls.')
 
 
 def print_flags(filename: str):
@@ -797,8 +805,15 @@ def main(_):
     rng = np.random.default_rng(FLAGS.seed)
   else:
     rng = None
-  vb_data = import_xcstats('boys_v2.csv')
-  vg_data = import_xcstats('girls_v2.csv')
+  vb_data = import_xcstats(FLAGS.boys_data)
+  if FLAGS.boys_data == FLAGS.girls_data:
+    vg_data = vb_data[(vb_data['gender'] == 'g') | (vb_data['gender'] == 'G')]
+    vb_data = vb_data[(vb_data['gender'] == 'b') | (vb_data['gender'] == 'B')]
+  else:
+    vg_data = import_xcstats(FLAGS.girls_data)
+
+  assert len(vb_data[(vb_data['gender'] == 'g') | (vb_data['gender'] == 'G')]) == 0
+  assert len(vg_data[(vg_data['gender'] == 'b') | (vg_data['gender'] == 'B')]) == 0
   print(f'Read in {vb_data.shape[0]} boys and '
         f'{vg_data.shape[0]} girls results')
 
