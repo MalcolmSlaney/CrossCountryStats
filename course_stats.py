@@ -292,7 +292,7 @@ def import_xcstats(
 
 
 def find_course_id_to_names(data: pd.DataFrame) -> Dict[int, str]:
-  assert isinstance(data, pd.Dataframe), f'data is a {type(data)}'
+  assert isinstance(data, pd.DataFrame), f'data is a {type(data)}'
   names = {}
   for _, a_result in data.iterrows():
     id = a_result.courseID
