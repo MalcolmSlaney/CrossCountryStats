@@ -1,0 +1,7 @@
+python3 course_stats.py --chains=36 -seed=42 --draws=2000 \
+	--cache_dir=Cache.gamma --result_dir=Results.gamma \
+	--monthly_spec=gamma,10,10 --yearly_spec=gamma,10,10 \
+	--course_spec=gamma,1,1    --runner_spec=gamma,1,0.25 \
+	--use_cached_model=False \
+	--girls_data=malcolmexport2024v2.csv \
+	--boys_data=malcolmexport2024v2.csv
