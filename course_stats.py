@@ -414,13 +414,13 @@ def create_result_frame(
   boys_runner_count = []
   girls_runner_count = []
   local_course = []
-  for course_id in common_courses:
+  for course_id in common_courses:  # These are the XCStats CourseIDs
     course_name = vb_id_mapper[course_id]
     base_course_name, distance = get_course_distance(course_name)
     course_distances.append(distance)
 
-    vb_difficulties.append(vb_course_est[vb_course_mapper[course_name]])
-    vg_difficulties.append(vg_course_est[vg_course_mapper[course_name]])
+    vb_difficulties.append(vb_course_est[vb_id_mapper[course_id]])
+    vg_difficulties.append(vg_course_est[vg_id_mapper[course_id]])
     if course_name == 'Crystal Springs (2.95)':
       vb_norm = vb_difficulties[-1]
       vg_norm = vg_difficulties[-1]
