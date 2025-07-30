@@ -33,7 +33,7 @@ DEFAULT_CACHE_DIR = 'Cache'
 # pylint: disable=too-many-locals
 def save_model(filename, model, trace, map_estimate,
                top_runner_percent, panda_data,
-               course_mapper, runner_mapper,
+               course_mapper, runner_mapper, id_mapper,
                default_dir: Optional[str] = DEFAULT_CACHE_DIR) -> None:
   if filename.startswith('/') or default_dir is None:
     full_filename = filename
@@ -46,9 +46,10 @@ def save_model(filename, model, trace, map_estimate,
                   'panda_data': panda_data,
                   'course_mapper': course_mapper,
                   'runner_mapper': runner_mapper,
+                  'id_mapper': id_mapper,
                   'map_estimate': map_estimate,
                   'datetime':
-                    datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                      datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                   }
 
   with open(full_filename, 'wb') as buff:
@@ -58,7 +59,7 @@ def save_model(filename, model, trace, map_estimate,
 def load_model(
     filename,
     default_dir: Optional[str] = DEFAULT_CACHE_DIR) -> Tuple[
-      pm.Model, az.InferenceData, Any, pd.DataFrame, Dict, Dict,
+      pm.Model, az.InferenceData, Any, pd.DataFrame, Dict, Dict, Dict, Dict
     ]:
   if filename.startswith('/') or default_dir is None:
     full_filename = filename
@@ -71,6 +72,7 @@ def load_model(
   return (model_dict['model'], model_dict['trace'],
           model_dict['top_runner_percent'], model_dict['panda_data'],
           model_dict['course_mapper'], model_dict['runner_mapper'],
+          model_dict['id_mapper'],
           model_dict['map_estimate'])
 
 
@@ -248,6 +250,10 @@ def extract_year(date):
   return parse_date(date).year
 
 
+# The CSV has these fields:
+#  meetDate	runnerID	gradYear	gender	schoolID	result	division	courseID	
+#   courseName distance	place	 num_runners state
+
 def import_xcstats(
     csv_file: str,
     default_dir: str = DEFAULT_DATA_DIR) -> pd.DataFrame:
@@ -275,14 +281,23 @@ def import_xcstats(
   # Add mileage to each course name since sometimes the same course has multiple
   # distances.
   # https://saturncloud.io/blog/how-to-combine-two-columns-in-a-pandas-dataframe/
-  def race_name(row):
-    return f'{row["courseName"]} ({row["distance"]})'
-  data['course_distance'] = data.apply(race_name, axis=1)
+  # def race_name(row):
+  #   return f'{row["courseName"]} ({row["distance"]})'
+  # data['course_distance'] = data.apply(race_name, axis=1)
 
   race_data = pd.DataFrame({'race_month': months,
                             'race_year': years})
   data_with_dates = pd.concat((data, race_data), axis=1)
   return data_with_dates
+
+
+def find_course_id_to_names(data: pd.DataFrame) -> Dict[int, str]:
+  names = {}
+  for a_result in data:
+    id = data.courseID
+    if id not in names:
+      names[id] = f'{a_result["courseName"]} ({a_result["distance"]})'
+  return names
 
 
 def transform_ids(data: pd.DataFrame,
@@ -312,6 +327,11 @@ def prepare_xc_data(data: pd.DataFrame,
   The school_id argument limits the output to just that school.
   The place_fraction limits the runners to those that finish in this *fraction*
   of the top.
+
+  Returns:
+    The new Panda dataframe, with added fields for runner_ids and course_ids,
+    which are now consequitive integers.  Also returns dictionaries that map 
+    the original ID to the new (small integer) ID.
   """
   if school_id:
     data = data[data['schoolID'] == school_id].copy()
@@ -325,7 +345,8 @@ def prepare_xc_data(data: pd.DataFrame,
 
   new_runner_ids, runner_mapper = transform_ids(data, 'runnerID')
   data.loc[:, 'runner_ids'] = new_runner_ids
-  new_course_ids, course_mapper = transform_ids(data, 'course_distance')
+  # new_course_ids, course_mapper = transform_ids(data, 'course_distance')
+  new_course_ids, course_mapper = transform_ids(data, 'courseID')
   data.loc[:, 'course_ids'] = new_course_ids
 
   # Years since a freshman (which will be 0)
@@ -367,7 +388,9 @@ def create_result_frame(
     vg_data: pd.DataFrame,
     vb_course_mapper: Dict[Any, int],
     vg_course_mapper: Dict[Any, int],
-    vb_model_trace, vg_model_trace,
+    vb_id_mapper: Dict[int, str],
+    vb_model_trace: az.InferenceData, 
+    vg_model_trace: az.InferenceData,
     local_course_list=(),
     vb_map_estimate=None, vg_map_estimate=None,
     use_map=False, normalize_to_crystal=True):
@@ -381,6 +404,7 @@ def create_result_frame(
     vg_course_est = np.mean(vg_model_trace.posterior.course_est.values,
                             axis=(0, 1))
 
+  # Find XCStats course ids that are common to both the boys and girls races.
   common_courses = find_common_courses(vb_course_mapper, vg_course_mapper)
 
   vg_difficulties = []
@@ -389,7 +413,8 @@ def create_result_frame(
   boys_runner_count = []
   girls_runner_count = []
   local_course = []
-  for course_name in common_courses:
+  for course_id in common_courses:
+    course_name = vb_id_mapper[course_id]
     base_course_name, distance = get_course_distance(course_name)
     course_distances.append(distance)
 
@@ -400,10 +425,10 @@ def create_result_frame(
       vg_norm = vg_difficulties[-1]
 
     runner_ids = vb_data.loc[
-      vb_data['course_distance'] == course_name]['runnerID'].values
+      vb_data['courseID'] == course_id]['runnerID'].values
     boys_runner_count.append(len(runner_ids))
     runner_ids = vg_data.loc[
-      vg_data['course_distance'] == course_name]['runnerID'].values
+      vg_data['courseID'] == course_id]['runnerID'].values
     girls_runner_count.append(len(runner_ids))
 
     local_course.append(base_course_name in local_course_list)
@@ -510,8 +535,11 @@ def create_html_table(race_data: pd.DataFrame,
 
 # Figure out which courses are common to both boys and girls (for the scatter
 # that follow.)
-def find_common_courses(vb_course_mapper, vg_course_mapper):
-  """Find the courses that are common to both boys and girls.
+def find_common_courses(vb_course_mapper: Dict[int, int], 
+                        vg_course_mapper: Dict[int, int]) -> List[int]:
+  """Find the courses that are common to both boys and girls.  The mappers
+  map from original XCStats Course ID to the small integer that we use when
+  building the model.
   """
   vg_courses = set(vg_course_mapper.keys())
   return list(set(vb_course_mapper.keys()).intersection(vg_courses))
@@ -532,6 +560,7 @@ def find_local_courses(pd_data: pd.DataFrame,
 
 
 def get_course_distance(name_and_dist: str) -> str:
+  """Parse the course-name distance string into its two pieces."""
   pieces = name_and_dist.rsplit(' ', 1)
   return pieces[0], float(pieces[1][1:-1])
 
@@ -829,6 +858,7 @@ def main(_):
       vb_course_mapper, vb_runner_mapper,
       vb_map_estimate) = load_model(cache_file, None)
     else:
+      vb_id_mapper = find_course_id_to_names(vb_data)
       vb_select, vb_runner_mapper, vb_course_mapper = prepare_xc_data(
           vb_data,
           place_fraction=top_runner_percent/100.0)
@@ -842,7 +872,7 @@ def main(_):
         save_model(cache_file,
                   vb_xc_model, vb_model_trace, vb_map_estimate,
                   top_runner_percent, vb_select,
-                  vb_course_mapper, vb_runner_mapper,
+                  vb_course_mapper, vb_runner_mapper, vb_id_mapper,
                   default_dir=None)
     print(vb_map_estimate)
   else:
@@ -859,6 +889,7 @@ def main(_):
       vg_course_mapper, vg_runner_mapper,
       vg_map_estimate) = load_model(cache_file, None)
     else:
+      vg_id_mapper = find_course_id_to_names(vg_data)
       vg_select, vg_runner_mapper, vg_course_mapper = prepare_xc_data(
           vg_data,
           place_fraction=top_runner_percent/100.0)
@@ -872,7 +903,7 @@ def main(_):
         save_model(cache_file,
                   vg_xc_model, vg_model_trace, vg_map_estimate,
                   top_runner_percent, vg_select,
-                  vg_course_mapper, vg_runner_mapper,
+                  vg_course_mapper, vg_runner_mapper, vg_id_mapper,
                   default_dir=None)
     print(vg_map_estimate)
   else:
@@ -969,6 +1000,7 @@ def main(_):
   local_course_list = find_local_courses(vb_data)
   scatter_df = create_result_frame(vb_data, vg_data,
                                   vb_course_mapper, vg_course_mapper,
+                                  vb_id_mapper,
                                   vb_model_trace, vg_model_trace,
                                   local_course_list)
 
