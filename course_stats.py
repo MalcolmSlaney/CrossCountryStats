@@ -292,9 +292,10 @@ def import_xcstats(
 
 
 def find_course_id_to_names(data: pd.DataFrame) -> Dict[int, str]:
+  assert isinstance(data, pd.Dataframe), f'data is a {type{data}}'
   names = {}
-  for a_result in data:
-    id = data.courseID
+  for _, a_result in data.iterrows():
+    id = a_result.courseID
     if id not in names:
       names[id] = f'{a_result["courseName"]} ({a_result["distance"]})'
   return names
