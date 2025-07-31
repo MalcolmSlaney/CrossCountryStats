@@ -422,7 +422,9 @@ def create_result_frame(
   girls_runner_count = []
   local_course = []
   course_names = []
+  course_ids = []
   for course_id in common_courses:  # These are the XCStats CourseIDs
+    course_ids.append(course_id)
     course_name = vb_course_id_to_name[course_id]
     course_names.append(course_name)
     base_course_name, distance = get_course_distance(course_name)
@@ -447,7 +449,8 @@ def create_result_frame(
     vb_difficulties = np.asarray(vb_difficulties)/vb_norm
     vg_difficulties = np.asarray(vg_difficulties)/vg_norm
 
-  scatter_df = pd.DataFrame({'vg_difficulty': vg_difficulties,
+  scatter_df = pd.DataFrame({'course_id': course_ids, 
+                             'vg_difficulty': vg_difficulties,
                              'vb_difficulty': vb_difficulties,
                              # 'course_name': common_courses,
                              'course_name': course_names,
@@ -545,6 +548,22 @@ def create_html_table(race_data: pd.DataFrame,
             f'<td class="num">{row["girls_runner_count"]}</td>'
             f'</tr>', file=file_pointer)
     print(HTML_FOOTER, file=file_pointer)
+
+
+def create_xc_stats_sql(race_data: pd.DataFrame,
+                        filename: str = 'course_difficulties.sql'):
+  """Create the SQL insert commands needed for XC Stats to ingest these 
+  results."""
+  cmd = ('INSERT INTO course_profile3 '
+         '(id, cd_id,boys_difficulty,girls_difficulty,num_boys,num_girls) '
+         'VALUES '
+         '(NULL,{0},{1:2.4f},{2:2.4f},{3},{4});\n')
+  with open(filename, 'w', encoding="utf-8") as file_pointer:
+    for _, row in race_data.iterrows():
+      file_pointer.write(cmd.format(row["course_id"], 
+                                    row["vb_difficulty"], row["vg_difficulty"], 
+                                    row["boys_runner_count"],
+                                    row["girls_runner_count"]))
 
 
 # Figure out which courses are common to both boys and girls (for the scatter
@@ -1040,6 +1059,9 @@ def main(_):
   create_hank_correction_list(scatter_df,
                               os.path.join(FLAGS.result_dir,
                                            'hank_corrections.txt'))
+
+  create_xc_stats_sql(scatter_df,
+                      os.path.join(FLAGS.result_dir, 'course_difficulties.sql'))
 
   ######################  Check prediction quality #####################
   y_pred = pm.sample_posterior_predictive(vb_model_trace,
