@@ -37,7 +37,7 @@ DEFAULT_CACHE_DIR = 'Cache'
 # pylint: disable=too-many-locals
 def save_model(filename, model, trace, map_estimate,
                top_runner_percent, panda_data,
-               course_mapper, runner_mapper, id_mapper,
+               course_id_to_index, runner_id_to_index, course_course_id_to_name,
                default_dir: Optional[str] = DEFAULT_CACHE_DIR) -> None:
   if filename.startswith('/') or default_dir is None:
     full_filename = filename
@@ -48,9 +48,9 @@ def save_model(filename, model, trace, map_estimate,
                   'trace': trace,
                   'top_runner_percent': top_runner_percent,
                   'panda_data': panda_data,
-                  'course_mapper': course_mapper,
-                  'runner_mapper': runner_mapper,
-                  'id_mapper': id_mapper,
+                  'course_id_to_index': course_id_to_index,
+                  'runner_id_to_index': runner_id_to_index,
+                  'course_course_id_to_name': course_course_id_to_name,
                   'map_estimate': map_estimate,
                   'datetime':
                       datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
@@ -75,8 +75,8 @@ def load_model(
       print(f'Restoring data stored at {model_dict["datetime"]}')
   return (model_dict['model'], model_dict['trace'],
           model_dict['top_runner_percent'], model_dict['panda_data'],
-          model_dict['course_mapper'], model_dict['runner_mapper'],
-          model_dict['id_mapper'],
+          model_dict['course_id_to_index'], model_dict['runner_id_to_index'],
+          model_dict['course_course_id_to_name'],
           model_dict['map_estimate'])
 
 
@@ -295,7 +295,7 @@ def import_xcstats(
   return data_with_dates
 
 
-def find_course_id_to_names(data: pd.DataFrame) -> Dict[int, str]:
+def find_course_course_id_to_names(data: pd.DataFrame) -> Dict[int, str]:
   """Create dictionary mapping XCStats ID to my course_name_distance string.
   """
   assert isinstance(data, pd.DataFrame), f'data is a {type(data)}'
@@ -350,15 +350,15 @@ def prepare_xc_data(data: pd.DataFrame,
     # Some runners are missing a graduation year (set to zero) so remove them.
     data = data[data['gradYear'] > 1900].copy()
 
-  new_runner_ids, runner_mapper = transform_ids(data, 'runnerID')
+  new_runner_ids, runner_id_to_index = transform_ids(data, 'runnerID')
   data.loc[:, 'runner_ids'] = new_runner_ids
-  # new_course_ids, course_mapper = transform_ids(data, 'course_distance')
-  new_course_ids, course_mapper = transform_ids(data, 'courseID')
+  # new_course_ids, course_id_to_index = transform_ids(data, 'course_distance')
+  new_course_ids, course_id_to_index = transform_ids(data, 'courseID')
   data.loc[:, 'course_ids'] = new_course_ids
 
   # Years since a freshman (which will be 0)
   data.loc[:, 'runner_year'] = data['race_year'] - (data['gradYear'] - 4)
-  return data, runner_mapper, course_mapper
+  return data, runner_id_to_index, course_id_to_index
 
 
 def build_and_test_model(xc_data: pd.DataFrame,
@@ -395,7 +395,7 @@ def create_result_frame(
     vg_data: pd.DataFrame,
     vb_course_id_to_index: Dict[Any, int],
     vg_course_id_to_index: Dict[Any, int],
-    vb_id_to_name: Dict[int, str],
+    vb_course_id_to_name: Dict[int, str],
     vb_model_trace: az.InferenceData, 
     vg_model_trace: az.InferenceData,
     local_course_list=(),
@@ -422,7 +422,7 @@ def create_result_frame(
   girls_runner_count = []
   local_course = []
   for course_id in common_courses:  # These are the XCStats CourseIDs
-    course_name = vb_id_to_name[course_id]
+    course_name = vb_course_id_to_name[course_id]
     base_course_name, distance = get_course_distance(course_name)
     course_distances.append(distance)
 
@@ -863,11 +863,11 @@ def main(_):
       print('\nLoading boys model from cache')
       (vb_xc_model, vb_model_trace,
       top_runner_percent, vb_select,
-      vb_course_id_to_index, vb_runner_mapper,
+      vb_course_id_to_index, vb_runner_id_to_index, vb_course_id_to_name,
       vb_map_estimate) = load_model(cache_file, None)
     else:
-      vb_id_to_name = find_course_id_to_names(vb_data)
-      vb_select, vb_runner_mapper, vb_course_id_to_index = prepare_xc_data(
+      vb_course_id_to_name = find_course_course_id_to_names(vb_data)
+      vb_select, vb_runner_id_to_index, vb_course_id_to_index = prepare_xc_data(
           vb_data, place_fraction=top_runner_percent/100.0)
       print('\nBuilding boys model...')
       vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
@@ -879,12 +879,12 @@ def main(_):
         save_model(cache_file,
                   vb_xc_model, vb_model_trace, vb_map_estimate,
                   top_runner_percent, vb_select,
-                  vb_course_id_to_index, vb_runner_mapper, vb_id_to_name,
+                  vb_course_id_to_index, vb_runner_id_to_index, vb_course_id_to_name,
                   default_dir=None)
     print(vb_map_estimate)
   else:
     print('Not building boys model.')
-  print(f'Boys model has {len(vb_runner_mapper)} runners and '
+  print(f'Boys model has {len(vb_runner_id_to_index)} runners and '
         f'{len(vb_course_id_to_index)} courses.')
 
   if FLAGS.genders in ('both', 'girls'):
@@ -893,11 +893,11 @@ def main(_):
       print('\nLoading girls model from cache')
       (vg_xc_model, vg_model_trace,
       top_runner_percent, vg_select,
-      vg_course_id_to_index, vg_runner_mapper,
+      vg_course_id_to_index, vg_runner_id_to_index, vg_course_id_to_name,
       vg_map_estimate) = load_model(cache_file, None)
     else:
-      vg_id_to_name = find_course_id_to_names(vg_data)
-      vg_select, vg_runner_mapper, vg_course_id_to_index = prepare_xc_data(
+      vg_course_id_to_name = find_course_course_id_to_names(vg_data)
+      vg_select, vg_runner_id_to_index, vg_course_id_to_index = prepare_xc_data(
           vg_data, place_fraction=top_runner_percent/100.0)
       print('\nBuilding girls model...')
       vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
@@ -909,12 +909,12 @@ def main(_):
         save_model(cache_file,
                   vg_xc_model, vg_model_trace, vg_map_estimate,
                   top_runner_percent, vg_select,
-                  vg_course_id_to_index, vg_runner_mapper, vg_id_to_name,
+                  vg_course_id_to_index, vg_runner_id_to_index, vg_course_id_to_name,
                   default_dir=None)
     print(vg_map_estimate)
   else:
     print('Not building girls model.')
-  print(f'Girls model has {len(vg_runner_mapper)} runners and '
+  print(f'Girls model has {len(vg_runner_id_to_index)} runners and '
         f'{len(vg_course_id_to_index)} courses.')
 
   ##################### Plot all the (VB) results.  ####################
@@ -1006,7 +1006,7 @@ def main(_):
   local_course_list = find_local_courses(vb_data)
   scatter_df = create_result_frame(vb_data, vg_data,
                                   vb_course_id_to_index, vg_course_id_to_index,
-                                  vb_id_to_name,
+                                  vb_course_id_to_name,
                                   vb_model_trace, vg_model_trace,
                                   local_course_list)
 
