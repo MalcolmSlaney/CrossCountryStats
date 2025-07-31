@@ -458,7 +458,8 @@ def create_result_frame(
 
 def create_markdown_table(race_data: pd.DataFrame):
   print('In create_markdown_table:')
-  print(race_data.head())
+  print('Column names are:', race_data.columns.tolist())
+  print(race_data.head().to_string())
   print('|Index | Course Name                      | Boys Difficulty | '
         'Girls Difficulty | # Boys | # Girls |')
   print('|-----:|---------------------------------:|'
