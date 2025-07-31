@@ -1,4 +1,8 @@
 """Compute the parameters of a Bayesian model that predicts school race times.
+
+Note: The XCStats IDs are not necessarily consecutive, so we transform their ID
+into an index, which are consequtive indices and good for the Bayesian model
+software.
 """
 import datetime
 import os
@@ -292,6 +296,8 @@ def import_xcstats(
 
 
 def find_course_id_to_names(data: pd.DataFrame) -> Dict[int, str]:
+  """Create dictionary mapping XCStats ID to my course_name_distance string.
+  """
   assert isinstance(data, pd.DataFrame), f'data is a {type(data)}'
   names = {}
   for _, a_result in data.iterrows():
@@ -305,7 +311,7 @@ def transform_ids(data: pd.DataFrame,
                   column_name: str) -> Tuple[pd.Series, Dict[Any, int]]:
   """Go through all the indicated column data and generate a mapping from
   the original name/id to a small number.  Return the time series, and
-  the dictionary that maps the original name/id into the new ID.
+  the dictionary that maps the original name/id into the new indices.
   """
   original_ids = list(set(data[column_name]))
   mapping_dictionary = dict(zip(original_ids, range(len(original_ids))))
@@ -332,7 +338,7 @@ def prepare_xc_data(data: pd.DataFrame,
   Returns:
     The new Panda dataframe, with added fields for runner_ids and course_ids,
     which are now consequitive integers.  Also returns dictionaries that map 
-    the original ID to the new (small integer) ID.
+    the original ID to the model index (a set of consecutive indices).
   """
   if school_id:
     data = data[data['schoolID'] == school_id].copy()
@@ -387,9 +393,9 @@ def find_course_name(name, mapper):
 def create_result_frame(
     vb_data: pd.DataFrame,
     vg_data: pd.DataFrame,
-    vb_course_mapper: Dict[Any, int],
-    vg_course_mapper: Dict[Any, int],
-    vb_id_mapper: Dict[int, str],
+    vb_course_id_to_index: Dict[Any, int],
+    vg_course_id_to_index: Dict[Any, int],
+    vb_id_to_name: Dict[int, str],
     vb_model_trace: az.InferenceData, 
     vg_model_trace: az.InferenceData,
     local_course_list=(),
@@ -400,13 +406,14 @@ def create_result_frame(
     vg_course_est = vg_map_estimate['course_est']
   else:
     # Average the posterior for course_est over all traces and all samples.
+    # The result is an NDArray in the order of the consecutive course indices.
     vb_course_est = np.mean(vb_model_trace.posterior.course_est.values,
                             axis=(0, 1))
     vg_course_est = np.mean(vg_model_trace.posterior.course_est.values,
                             axis=(0, 1))
 
   # Find XCStats course ids that are common to both the boys and girls races.
-  common_courses = find_common_courses(vb_course_mapper, vg_course_mapper)
+  common_courses = find_common_courses(vb_course_id_to_index, vg_course_id_to_index)
 
   vg_difficulties = []
   vb_difficulties = []
@@ -415,12 +422,12 @@ def create_result_frame(
   girls_runner_count = []
   local_course = []
   for course_id in common_courses:  # These are the XCStats CourseIDs
-    course_name = vb_id_mapper[course_id]
+    course_name = vb_id_to_name[course_id]
     base_course_name, distance = get_course_distance(course_name)
     course_distances.append(distance)
 
-    vb_difficulties.append(vb_course_est[vb_id_mapper[course_id]])
-    vg_difficulties.append(vg_course_est[vg_id_mapper[course_id]])
+    vb_difficulties.append(vb_course_est[vb_course_id_to_index[course_id]])
+    vg_difficulties.append(vg_course_est[vg_course_id_to_index[course_id]])
     if course_name == 'Crystal Springs (2.95)':
       vb_norm = vb_difficulties[-1]
       vg_norm = vg_difficulties[-1]
@@ -536,14 +543,14 @@ def create_html_table(race_data: pd.DataFrame,
 
 # Figure out which courses are common to both boys and girls (for the scatter
 # that follow.)
-def find_common_courses(vb_course_mapper: Dict[int, int], 
-                        vg_course_mapper: Dict[int, int]) -> List[int]:
+def find_common_courses(vb_course_id_to_index: Dict[int, int], 
+                        vg_course_id_to_index: Dict[int, int]) -> List[int]:
   """Find the courses that are common to both boys and girls.  The mappers
   map from original XCStats Course ID to the small integer that we use when
   building the model.
   """
-  vg_courses = set(vg_course_mapper.keys())
-  return list(set(vb_course_mapper.keys()).intersection(vg_courses))
+  vg_courses = set(vg_course_id_to_index.keys())
+  return list(set(vb_course_id_to_index.keys()).intersection(vg_courses))
 
 
 # Extract the course names where our local schools run, for easier debugging.
@@ -856,13 +863,12 @@ def main(_):
       print('\nLoading boys model from cache')
       (vb_xc_model, vb_model_trace,
       top_runner_percent, vb_select,
-      vb_course_mapper, vb_runner_mapper,
+      vb_course_id_to_index, vb_runner_mapper,
       vb_map_estimate) = load_model(cache_file, None)
     else:
-      vb_id_mapper = find_course_id_to_names(vb_data)
-      vb_select, vb_runner_mapper, vb_course_mapper = prepare_xc_data(
-          vb_data,
-          place_fraction=top_runner_percent/100.0)
+      vb_id_to_name = find_course_id_to_names(vb_data)
+      vb_select, vb_runner_mapper, vb_course_id_to_index = prepare_xc_data(
+          vb_data, place_fraction=top_runner_percent/100.0)
       print('\nBuilding boys model...')
       vb_xc_model, vb_map_estimate, vb_model_trace = build_and_test_model(
         vb_select, FLAGS.monthly_spec, FLAGS.yearly_spec,
@@ -873,13 +879,13 @@ def main(_):
         save_model(cache_file,
                   vb_xc_model, vb_model_trace, vb_map_estimate,
                   top_runner_percent, vb_select,
-                  vb_course_mapper, vb_runner_mapper, vb_id_mapper,
+                  vb_course_id_to_index, vb_runner_mapper, vb_id_to_name,
                   default_dir=None)
     print(vb_map_estimate)
   else:
     print('Not building boys model.')
   print(f'Boys model has {len(vb_runner_mapper)} runners and '
-        f'{len(vb_course_mapper)} courses.')
+        f'{len(vb_course_id_to_index)} courses.')
 
   if FLAGS.genders in ('both', 'girls'):
     cache_file = os.path.join(FLAGS.cache_dir, 'vg_analysis.pickle')
@@ -887,13 +893,12 @@ def main(_):
       print('\nLoading girls model from cache')
       (vg_xc_model, vg_model_trace,
       top_runner_percent, vg_select,
-      vg_course_mapper, vg_runner_mapper,
+      vg_course_id_to_index, vg_runner_mapper,
       vg_map_estimate) = load_model(cache_file, None)
     else:
-      vg_id_mapper = find_course_id_to_names(vg_data)
-      vg_select, vg_runner_mapper, vg_course_mapper = prepare_xc_data(
-          vg_data,
-          place_fraction=top_runner_percent/100.0)
+      vg_id_to_name = find_course_id_to_names(vg_data)
+      vg_select, vg_runner_mapper, vg_course_id_to_index = prepare_xc_data(
+          vg_data, place_fraction=top_runner_percent/100.0)
       print('\nBuilding girls model...')
       vg_xc_model, vg_map_estimate, vg_model_trace = build_and_test_model(
         vg_select, FLAGS.monthly_spec, FLAGS.yearly_spec,
@@ -904,13 +909,13 @@ def main(_):
         save_model(cache_file,
                   vg_xc_model, vg_model_trace, vg_map_estimate,
                   top_runner_percent, vg_select,
-                  vg_course_mapper, vg_runner_mapper, vg_id_mapper,
+                  vg_course_id_to_index, vg_runner_mapper, vg_id_to_name,
                   default_dir=None)
     print(vg_map_estimate)
   else:
     print('Not building girls model.')
   print(f'Girls model has {len(vg_runner_mapper)} runners and '
-        f'{len(vg_course_mapper)} courses.')
+        f'{len(vg_course_id_to_index)} courses.')
 
   ##################### Plot all the (VB) results.  ####################
   plot_map_course_difficulties(
@@ -1000,8 +1005,8 @@ def main(_):
   ################## Create course difficulty summary tables ###################
   local_course_list = find_local_courses(vb_data)
   scatter_df = create_result_frame(vb_data, vg_data,
-                                  vb_course_mapper, vg_course_mapper,
-                                  vb_id_mapper,
+                                  vb_course_id_to_index, vg_course_id_to_index,
+                                  vb_id_to_name,
                                   vb_model_trace, vg_model_trace,
                                   local_course_list)
 
