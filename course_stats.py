@@ -457,6 +457,8 @@ def create_result_frame(
 
 
 def create_markdown_table(race_data: pd.DataFrame):
+  print('In create_markdown_table:')
+  print(race_data.head())
   print('|Index | Course Name                      | Boys Difficulty | '
         'Girls Difficulty | # Boys | # Girls |')
   print('|-----:|---------------------------------:|'
@@ -549,8 +551,9 @@ def find_common_courses(vb_course_id_to_index: Dict[int, int],
   map from original XCStats Course ID to the small integer that we use when
   building the model.
   """
+  vb_courses = set(vb_course_id_to_index.keys())
   vg_courses = set(vg_course_id_to_index.keys())
-  return list(set(vb_course_id_to_index.keys()).intersection(vg_courses))
+  return list(set(vb_courses.intersection(vg_courses)))
 
 
 # Extract the course names where our local schools run, for easier debugging.
