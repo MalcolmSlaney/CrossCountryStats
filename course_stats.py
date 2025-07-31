@@ -421,8 +421,10 @@ def create_result_frame(
   boys_runner_count = []
   girls_runner_count = []
   local_course = []
+  course_names = []
   for course_id in common_courses:  # These are the XCStats CourseIDs
     course_name = vb_course_id_to_name[course_id]
+    course_names.append(course_name)
     base_course_name, distance = get_course_distance(course_name)
     course_distances.append(distance)
 
@@ -447,7 +449,8 @@ def create_result_frame(
 
   scatter_df = pd.DataFrame({'vg_difficulty': vg_difficulties,
                              'vb_difficulty': vb_difficulties,
-                             'course_name': common_courses,
+                             # 'course_name': common_courses,
+                             'course_name': course_names,
                              'course_distances': course_distances,
                              'boys_runner_count': boys_runner_count,
                              'girls_runner_count': girls_runner_count,
