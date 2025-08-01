@@ -287,3 +287,14 @@ Crystal Springs time, and thus this factor doesn't apply.
 You can see all these difficulty factors in the interactive comparison 
 viewer that is linked here.  You can zoom and move around to explore the data.
 [Course Difficulty Comparison Viewer](https://malcolmslaney.github.io/CrossCountryStats/Results/vb_vg_difficulties_comparison.html)
+
+The results shown here were generated with this command line.
+```
+python3 course_stats.py --chains=36 -seed=42 --draws=2000 \
+	--cache_dir=Cache.gamma --result_dir=Results.gamma \
+	--monthly_spec=gamma,10,10 --yearly_spec=gamma,10,10 \
+	--course_spec=gamma,1,1    --runner_spec=gamma,1,0.25 \
+	--use_cached_model=True \
+	--girls_data=malcolmexport2024v2.csv \
+	--boys_data=malcolmexport2024v2.csv
+```
